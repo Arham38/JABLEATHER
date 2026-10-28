@@ -53,6 +53,14 @@ export const ProductDetailPage = () => {
   const [newReviewRating, setNewReviewRating] = useState(5);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
+  const realRating = useMemo(() => {
+    if (reviews.length === 0) return product?.rating || null;
+    const avg = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+    return Number(avg.toFixed(1));
+  }, [reviews, product?.rating]);
+
+  const realReviewCount = reviews.length > 0 ? reviews.length : (product?.reviewCount || 0);
+
   useEffect(() => {
     const loadProductData = async () => {
       setIsLoading(true);
@@ -139,7 +147,7 @@ export const ProductDetailPage = () => {
     }
     setIsSubmittingReview(true);
     try {
-      const submitted = await reviewService.submitReview({
+      await reviewService.submitReview({
         productId: product.id,
         productName: product.name,
         author: newReviewAuthor,
@@ -147,13 +155,12 @@ export const ProductDetailPage = () => {
         comment: newReviewComment,
         rating: newReviewRating,
       });
-      setReviews([submitted, ...reviews]);
       setNewReviewAuthor('');
       setNewReviewTitle('');
       setNewReviewComment('');
-      toast.success('Review submitted for moderation (demo mode)');
-    } catch {
-      toast.error('Could not submit review');
+      toast.success('Thank you! Your review has been submitted for atelier moderation.');
+    } catch (err) {
+      toast.error(err.message || 'Could not submit review');
     } finally {
       setIsSubmittingReview(false);
     }
@@ -262,14 +269,14 @@ export const ProductDetailPage = () => {
 
             {/* Rating & Stock */}
             <div className="flex items-center gap-3 mb-4">
-              {product.rating != null && (
+              {realRating != null && (
                 <div className="flex items-center text-amber-500">
                   <Star className="w-4 h-4 fill-amber-500" />
-                  <span className="text-xs font-bold text-stone-900 ml-1">{product.rating}</span>
-                  <span className="text-xs text-[#6B665F] ml-1">({product.reviewCount} reviews)</span>
+                  <span className="text-xs font-bold text-stone-900 ml-1">{realRating}</span>
+                  <span className="text-xs text-[#6B665F] ml-1">({realReviewCount} reviews)</span>
                 </div>
               )}
-              {product.rating != null && <span className="text-stone-300">•</span>}
+              {realRating != null && <span className="text-stone-300">•</span>}
               <span className={`text-xs font-semibold flex items-center gap-1 ${product.inStock ? 'text-emerald-700' : 'text-red-700'}`}>
                 {product.inStock && <Check className="w-3.5 h-3.5" />}
                 {product.inStock ? `In Stock (${product.stockCount} Available)` : 'Out of Stock'}

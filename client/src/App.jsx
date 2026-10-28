@@ -1,10 +1,11 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
 // Providers
 import { ToastProvider } from './context/ToastContext';
 import { UIProvider } from './context/UIContext';
 import { AuthProvider } from './context/AuthContext';
+import { CurrencyProvider } from './context/CurrencyContext';
 import { CartProvider } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
 
@@ -25,6 +26,7 @@ import CheckoutPage from './pages/storefront/CheckoutPage';
 import CheckoutSuccessPage from './pages/storefront/CheckoutSuccessPage';
 import AboutPage from './pages/storefront/AboutPage';
 import ContactPage from './pages/storefront/ContactPage';
+import UnsubscribePage from './pages/storefront/UnsubscribePage';
 import SearchPage from './pages/storefront/SearchPage';
 import NotFoundPage from './pages/storefront/NotFoundPage';
 
@@ -53,6 +55,8 @@ import AdminOrdersPage from './pages/admin/AdminOrdersPage';
 import AdminOrderDetailPage from './pages/admin/AdminOrderDetailPage';
 import AdminCustomersPage from './pages/admin/AdminCustomersPage';
 import AdminReviewsPage from './pages/admin/AdminReviewsPage';
+import AdminMessagesPage from './pages/admin/AdminMessagesPage';
+import AdminSubscribersPage from './pages/admin/AdminSubscribersPage';
 import AdminCouponsPage from './pages/admin/AdminCouponsPage';
 import AdminHomepageCmsPage from './pages/admin/AdminHomepageCmsPage';
 import AdminMediaPage from './pages/admin/AdminMediaPage';
@@ -68,8 +72,9 @@ function App() {
       <ToastProvider>
         <UIProvider>
           <AuthProvider>
-            <CartProvider>
-              <WishlistProvider>
+            <CurrencyProvider>
+              <CartProvider>
+                <WishlistProvider>
                 <ScrollToTop />
                 <Routes>
                   {/* Public Storefront Routes */}
@@ -96,6 +101,7 @@ function App() {
                     {/* Informational */}
                     <Route path="about" element={<AboutPage />} />
                     <Route path="contact" element={<ContactPage />} />
+                    <Route path="unsubscribe" element={<UnsubscribePage />} />
                     <Route path="search" element={<SearchPage />} />
 
                     {/* Customer Auth Pages within Storefront */}
@@ -135,6 +141,8 @@ function App() {
                     <Route path="orders/:id" element={<AdminOrderDetailPage />} />
                     <Route path="customers" element={<AdminCustomersPage />} />
                     <Route path="reviews" element={<AdminReviewsPage />} />
+                    <Route path="messages" element={<AdminMessagesPage />} />
+                    <Route path="subscribers" element={<AdminSubscribersPage />} />
                     <Route path="coupons" element={<AdminCouponsPage />} />
                     <Route path="homepage" element={<AdminHomepageCmsPage />} />
                     <Route path="media" element={<AdminMediaPage />} />
@@ -147,8 +155,9 @@ function App() {
                 </Routes>
               </WishlistProvider>
             </CartProvider>
-          </AuthProvider>
-        </UIProvider>
+          </CurrencyProvider>
+        </AuthProvider>
+      </UIProvider>
       </ToastProvider>
     </BrowserRouter>
   );

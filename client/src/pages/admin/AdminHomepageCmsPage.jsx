@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sliders, Save, Check } from 'lucide-react';
+import { Save } from 'lucide-react';
 import supabaseAdminService from '../../services/supabaseAdminService';
 import { useToast } from '../../context/ToastContext';
 

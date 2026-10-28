@@ -17,7 +17,6 @@ import {
   Menu,
   X,
   ExternalLink,
-  Bell,
   Truck,
   CreditCard,
 } from 'lucide-react';
@@ -41,6 +40,8 @@ export const AdminLayout = () => {
     { label: 'Orders', to: '/admin/orders', icon: <ShoppingBag className="w-4 h-4" /> },
     { label: 'Customers', to: '/admin/customers', icon: <Users className="w-4 h-4" /> },
     { label: 'Reviews', to: '/admin/reviews', icon: <MessageSquare className="w-4 h-4" /> },
+    { label: 'Inquiries', to: '/admin/messages', icon: <MessageSquare className="w-4 h-4" /> },
+    { label: 'Subscribers', to: '/admin/subscribers', icon: <Users className="w-4 h-4" /> },
     { label: 'Coupons', to: '/admin/coupons', icon: <Tag className="w-4 h-4" /> },
     { label: 'Homepage CMS', to: '/admin/homepage', icon: <Sliders className="w-4 h-4" /> },
     { label: 'Media Library', to: '/admin/media', icon: <Image className="w-4 h-4" /> },

@@ -1,11 +1,5 @@
 import supabase from '../utils/supabase';
-import { storage } from '../utils/storage';
-import { mockCoupons } from '../data/mockCoupons';
-import { mockReviews } from '../data/mockReviews';
-
-const ADMIN_COUPONS_KEY = 'jab_admin_coupons';
-const ADMIN_REVIEWS_KEY = 'jab_admin_reviews';
-const ADMIN_HOMEPAGE_CMS_KEY = 'jab_admin_homepage_cms';
+import { couponService } from './couponService';
 
 const initialHomepageCms = {
   hero: {
@@ -340,82 +334,104 @@ export const supabaseAdminService = {
   // Coupons Management
   async getCoupons() {
     await requireAdmin();
-    try {
-      const { data, error } = await supabase.from('coupons').select('*').order('created_at', { ascending: false });
-      if (!error && data) return data;
-    } catch {
-      // Fallback to local storage
-    }
-    return storage.get(ADMIN_COUPONS_KEY, mockCoupons);
+    return couponService.getAllCoupons();
   },
 
   async createCoupon(couponData) {
     await requireAdmin();
-    try {
-      const { data, error } = await supabase.from('coupons').insert(couponData).select().single();
-      if (!error && data) return data;
-    } catch {
-      // Fallback to local storage
-    }
-    const coupons = storage.get(ADMIN_COUPONS_KEY, mockCoupons);
-    const newCoupon = {
-      id: 'coup-' + Date.now(),
-      usageCount: 0,
-      isActive: true,
-      ...couponData,
-    };
-    const updated = [newCoupon, ...coupons];
-    storage.set(ADMIN_COUPONS_KEY, updated);
-    return newCoupon;
+    return couponService.saveCoupon(couponData);
+  },
+
+  async deleteCoupon(id) {
+    await requireAdmin();
+    return couponService.deleteCoupon(id);
   },
 
   // Reviews Moderation
   async getReviews() {
     await requireAdmin();
-    try {
-      const { data, error } = await supabase.from('reviews').select('*').order('created_at', { ascending: false });
-      if (!error && data) return data;
-    } catch {
-      // Fallback to local storage
+    const { data, error } = await supabase
+      .from('reviews')
+      .select('*, products(name, slug)')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.warn('Could not load reviews from Supabase:', error.message);
+      return [];
     }
-    return storage.get(ADMIN_REVIEWS_KEY, mockReviews);
+
+    return (data || []).map((r) => ({
+      id: r.id,
+      productId: r.product_id,
+      productName: r.products?.name || 'Leather Item',
+      customerName: r.customer_name,
+      customerEmail: r.customer_email,
+      rating: r.rating,
+      title: r.title,
+      comment: r.comment,
+      status: r.status,
+      verifiedPurchase: Boolean(r.verified_purchase),
+      date: r.created_at,
+    }));
   },
 
   async updateReviewStatus(reviewId, status) {
     await requireAdmin();
-    try {
-      const { data, error } = await supabase.from('reviews').update({ status }).eq('id', reviewId).select().single();
-      if (!error && data) return data;
-    } catch {
-      // Fallback to local storage
-    }
-    const reviews = storage.get(ADMIN_REVIEWS_KEY, mockReviews);
-    const updated = reviews.map((r) => (r.id === reviewId ? { ...r, status } : r));
-    storage.set(ADMIN_REVIEWS_KEY, updated);
-    return updated.find((r) => r.id === reviewId);
+    const { data, error } = await supabase
+      .from('reviews')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', reviewId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteReview(reviewId) {
+    await requireAdmin();
+    const { error } = await supabase
+      .from('reviews')
+      .delete()
+      .eq('id', reviewId);
+
+    if (error) throw error;
+    return true;
   },
 
   // Homepage CMS
   async getHomepageCms() {
     await requireAdmin();
-    try {
-      const { data, error } = await supabase.from('homepage_cms').select('*').single();
-      if (!error && data?.content) return data.content;
-    } catch {
-      // Fallback to local storage
+    const { data, error } = await supabase
+      .from('homepage_cms')
+      .select('*');
+
+    if (error || !data || data.length === 0) {
+      return initialHomepageCms;
     }
-    return storage.get(ADMIN_HOMEPAGE_CMS_KEY, initialHomepageCms);
+
+    const cms = { ...initialHomepageCms };
+    for (const row of data) {
+      if (row.id && row.content) {
+        cms[row.id] = { ...(cms[row.id] || {}), ...row.content };
+      }
+    }
+    return cms;
   },
 
   async updateHomepageCms(cmsData) {
     await requireAdmin();
-    try {
-      const { error } = await supabase.from('homepage_cms').upsert({ id: 'main', content: cmsData, updated_at: new Date().toISOString() });
-      if (!error) return cmsData;
-    } catch {
-      // Fallback to local storage
+    const entries = Object.entries(cmsData);
+    for (const [key, val] of entries) {
+      const { error } = await supabase
+        .from('homepage_cms')
+        .upsert({
+          id: key,
+          content: val,
+          updated_at: new Date().toISOString(),
+        });
+      if (error) throw error;
     }
-    storage.set(ADMIN_HOMEPAGE_CMS_KEY, cmsData);
     return cmsData;
   },
 };
