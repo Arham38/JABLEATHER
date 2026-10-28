@@ -5,7 +5,7 @@ export const paymentService = {
     { id: 'wire', name: 'Bank Wire / TT (B2B & Wholesale Orders)', icon: 'landmark' },
   ],
 
-  simulatePaymentProcessing: async (paymentDetails) => {
+  simulatePaymentProcessing: async (_paymentDetails) => {
     // Artificial latency for realistic checkout feel
     await new Promise((resolve) => setTimeout(resolve, 800));
 

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { CreditCard, DollarSign, Lock, Save, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { CreditCard, AlertCircle, Lock, Save, Loader2 } from 'lucide-react';
+import { settingsService } from '../../services/settingsService';
 import { useToast } from '../../context/ToastContext';
 
 export const AdminPaymentsPage = () => {
@@ -13,16 +14,38 @@ export const AdminPaymentsPage = () => {
     defaultCurrency: 'USD',
     settlementAccount: 'Export Processing Zone Treasury Branch Sialkot',
   });
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const handleSave = (e) => {
+  useEffect(() => {
+    settingsService.getSection('payments')
+      .then((cfg) => {
+        if (cfg) setPaymentsConfig((prev) => ({ ...prev, ...cfg }));
+      })
+      .catch((err) => toast.error(err.message || 'Failed to load payments settings'))
+      .finally(() => setLoading(false));
+  }, [toast]);
+
+  const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
-    setTimeout(() => {
+    try {
+      await settingsService.updateSection('payments', paymentsConfig);
+      toast.success('Payment gateway configuration saved to Supabase');
+    } catch (err) {
+      toast.error(`Save failed: ${err.message}`);
+    } finally {
       setSaving(false);
-      toast.success('Payment gateway configuration saved');
-    }, 300);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[300px]">
+        <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-4xl">
