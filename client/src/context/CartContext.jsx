@@ -1,29 +1,76 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { cartService } from '../services/cartService';
 import { couponService } from '../services/couponService';
 import { shippingService } from '../services/shippingService';
+import { useCurrency } from './CurrencyContext';
 import { useToast } from './ToastContext';
 
 const CartContext = createContext(null);
 
-const FREE_SHIPPING_THRESHOLD = 150.00;
-
 export const CartProvider = ({ children }) => {
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState(() => {
+    const saved = cartService.getCart();
+    return Array.isArray(saved) ? saved : [];
+  });
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [isCouponLoading, setIsCouponLoading] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
+  const { freeShippingThreshold, currency } = useCurrency();
   const toast = useToast();
 
-  // Load from local storage
+  // Revalidate items against live Supabase catalog
+  const revalidate = useCallback(async (currentItems) => {
+    if (!currentItems || currentItems.length === 0) return;
+    setIsValidating(true);
+    try {
+      const { hydratedItems, notices } = await cartService.revalidateCart(currentItems);
+      setItems(hydratedItems);
+
+      // Notify customer if any prices changed or items were adjusted/sold out
+      for (const notice of notices) {
+        if (notice.type === 'out_of_stock') {
+          toast.warning(notice.message);
+        } else if (notice.type === 'stock_adjusted') {
+          toast.info(notice.message);
+        } else if (notice.type === 'price_changed') {
+          toast.info(notice.message);
+        }
+      }
+    } catch (err) {
+      console.warn('Revalidation check skipped:', err);
+    } finally {
+      setIsValidating(false);
+    }
+  }, [toast]);
+
+  // Initial load: read saved cart and re-validate against catalog
   useEffect(() => {
     const saved = cartService.getCart();
-    if (saved && Array.isArray(saved)) {
-      setItems(saved);
+    if (saved && Array.isArray(saved) && saved.length > 0) {
+      let isMounted = true;
+      cartService.revalidateCart(saved).then(({ hydratedItems, notices }) => {
+        if (!isMounted) return;
+        setItems(hydratedItems);
+        for (const notice of notices) {
+          if (notice.type === 'out_of_stock') {
+            toast.warning(notice.message);
+          } else if (notice.type === 'stock_adjusted') {
+            toast.info(notice.message);
+          } else if (notice.type === 'price_changed') {
+            toast.info(notice.message);
+          }
+        }
+      }).catch((err) => {
+        console.warn('Cart initialization skipped:', err);
+      });
+      return () => {
+        isMounted = false;
+      };
     }
-  }, []);
+  }, [toast]);
 
-  // Save to local storage on update
+  // Save to storage on update
   useEffect(() => {
     cartService.saveCart(items);
   }, [items]);
@@ -36,13 +83,15 @@ export const CartProvider = ({ children }) => {
     return items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   }, [items]);
 
+  // Dynamic free shipping threshold from store settings
   const freeShippingRemaining = useMemo(() => {
-    return Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
-  }, [subtotal]);
+    return Math.max(0, freeShippingThreshold - subtotal);
+  }, [subtotal, freeShippingThreshold]);
 
   const freeShippingProgress = useMemo(() => {
-    return Math.min(100, Math.round((subtotal / FREE_SHIPPING_THRESHOLD) * 100));
-  }, [subtotal]);
+    if (!freeShippingThreshold || freeShippingThreshold <= 0) return 100;
+    return Math.min(100, Math.round((subtotal / freeShippingThreshold) * 100));
+  }, [subtotal, freeShippingThreshold]);
 
   const discount = useMemo(() => {
     if (!appliedCoupon) return 0;
@@ -50,16 +99,17 @@ export const CartProvider = ({ children }) => {
   }, [appliedCoupon]);
 
   const shippingFee = useMemo(() => {
-    if (appliedCoupon?.discountType === 'shipping') return 0;
-    return shippingService.calculateShipping(subtotal);
-  }, [subtotal, appliedCoupon]);
+    if (appliedCoupon?.freeShipping || appliedCoupon?.discountType === 'shipping') return 0;
+    return shippingService.computeShippingFee(subtotal, 'standard', freeShippingThreshold);
+  }, [subtotal, appliedCoupon, freeShippingThreshold]);
 
   const total = useMemo(() => {
     const calculated = subtotal - discount + shippingFee;
     return Math.max(0, Number(calculated.toFixed(2)));
   }, [subtotal, discount, shippingFee]);
 
-  const addToCart = (product, { size = null, color = null, quantity = 1 } = {}) => {
+  // Immutable addToCart: new object for changed items, strictly capped by stockCount
+  const addToCart = useCallback((product, { size = null, color = null, quantity = 1 } = {}) => {
     const selectedSize = size || (product.sizes && product.sizes[0]) || 'Standard';
     const selectedColor =
       typeof color === 'string'
@@ -67,64 +117,132 @@ export const CartProvider = ({ children }) => {
         : color?.name || (product.colors && product.colors[0]?.name) || '';
 
     const cartItemId = `${product.id}-${selectedSize}-${selectedColor}`.replace(/\s+/g, '-');
+    const availableStock = Number(product.stockCount ?? product.stock) || 10;
+
+    if (availableStock <= 0) {
+      toast.error(`"${product.name}" is currently out of stock.`);
+      return;
+    }
 
     setItems((prev) => {
       const existingIndex = prev.findIndex((item) => item.cartItemId === cartItemId);
+
       if (existingIndex > -1) {
-        const updated = [...prev];
-        updated[existingIndex].quantity += quantity;
-        return updated;
+        const existing = prev[existingIndex];
+        const requestedTotal = existing.quantity + quantity;
+
+        if (existing.quantity >= availableStock) {
+          toast.warning(`Maximum available stock (${availableStock}) already in your bag.`);
+          return prev;
+        }
+
+        const newQty = Math.min(requestedTotal, availableStock);
+        if (newQty < requestedTotal) {
+          toast.info(`Added ${newQty - existing.quantity} more. Reached maximum stock limit of ${availableStock}.`);
+        } else {
+          toast.success(`Updated ${product.name} quantity to ${newQty}`);
+        }
+
+        // Immutable array and object creation
+        return prev.map((item, idx) =>
+          idx === existingIndex
+            ? { ...item, quantity: newQty, stockCount: availableStock }
+            : item
+        );
       } else {
+        const initialQty = Math.min(quantity, availableStock);
+        const effectivePrice = product.salePrice && Number(product.salePrice) > 0 && Number(product.salePrice) < product.price
+          ? Number(product.salePrice)
+          : Number(product.price);
+
         const newItem = {
           cartItemId,
           id: product.id,
+          productId: product.id,
           name: product.name,
           slug: product.slug,
-          sku: product.sku,
-          price: product.price,
-          compareAtPrice: product.compareAtPrice,
+          sku: product.sku || '',
+          price: effectivePrice,
+          compareAtPrice: product.compareAtPrice ? Number(product.compareAtPrice) : null,
           currency: product.currency || 'USD',
           image: product.images?.[0] || '',
           size: selectedSize,
           color: selectedColor,
-          quantity: quantity,
-          inStock: product.inStock,
+          quantity: initialQty,
+          stockCount: availableStock,
+          inStock: true,
         };
+
+        toast.success(`Added ${product.name} (${selectedSize}) to bag`);
         return [...prev, newItem];
       }
     });
 
-    toast.success(`Added ${product.name} (${selectedSize}) to bag`);
     setIsCartOpen(true);
-  };
+  }, [toast]);
 
-  const updateQuantity = (cartItemId, newQty) => {
+  const removeFromCart = useCallback((cartItemId) => {
+    setItems((prev) => {
+      const target = prev.find((i) => i.cartItemId === cartItemId);
+      if (target) {
+        toast.info(`Removed ${target.name} from bag`);
+      }
+      return prev.filter((i) => i.cartItemId !== cartItemId);
+    });
+  }, [toast]);
+
+  const updateQuantity = useCallback((cartItemId, newQty) => {
     if (newQty <= 0) {
       removeFromCart(cartItemId);
       return;
     }
-    setItems((prev) =>
-      prev.map((item) =>
+
+    setItems((prev) => {
+      const target = prev.find((item) => item.cartItemId === cartItemId);
+      if (!target) return prev;
+
+      const maxStock = target.stockCount || 99;
+      if (newQty > maxStock) {
+        toast.warning(`Only ${maxStock} items available in stock.`);
+        return prev.map((item) =>
+          item.cartItemId === cartItemId ? { ...item, quantity: maxStock } : item
+        );
+      }
+
+      return prev.map((item) =>
         item.cartItemId === cartItemId ? { ...item, quantity: newQty } : item
-      )
-    );
-  };
+      );
+    });
+  }, [removeFromCart, toast]);
 
-  const removeFromCart = (cartItemId) => {
-    const target = items.find((i) => i.cartItemId === cartItemId);
-    setItems((prev) => prev.filter((i) => i.cartItemId !== cartItemId));
-    if (target) {
-      toast.info(`Removed ${target.name} from bag`);
-    }
-  };
-
-  const clearCart = () => {
+  const clearCart = useCallback(() => {
     setItems([]);
     setAppliedCoupon(null);
     cartService.clearCart();
-  };
+  }, []);
 
-  const applyCoupon = async (code) => {
+  const openCart = useCallback(() => {
+    setIsCartOpen(true);
+    // Re-verify prices and stock whenever cart is opened
+    if (items.length > 0) {
+      revalidate(items);
+    }
+  }, [items, revalidate]);
+
+  const closeCart = useCallback(() => {
+    setIsCartOpen(false);
+  }, []);
+
+  const toggleCart = useCallback(() => {
+    setIsCartOpen((prev) => {
+      if (!prev && items.length > 0) {
+        revalidate(items);
+      }
+      return !prev;
+    });
+  }, [items, revalidate]);
+
+  const applyCoupon = useCallback(async (code) => {
     setIsCouponLoading(true);
     try {
       const result = await couponService.validateCoupon(code, subtotal);
@@ -137,38 +255,65 @@ export const CartProvider = ({ children }) => {
     } finally {
       setIsCouponLoading(false);
     }
-  };
+  }, [subtotal, toast]);
 
-  const removeCoupon = () => {
+  const removeCoupon = useCallback(() => {
     setAppliedCoupon(null);
     toast.info('Coupon removed');
-  };
+  }, [toast]);
+
+  const value = useMemo(() => ({
+    items,
+    itemCount,
+    subtotal,
+    discount,
+    shippingFee,
+    total,
+    currency,
+    freeShippingRemaining,
+    freeShippingProgress,
+    appliedCoupon,
+    isCouponLoading,
+    isValidating,
+    isCartOpen,
+    openCart,
+    closeCart,
+    toggleCart,
+    addToCart,
+    updateQuantity,
+    removeFromCart,
+    clearCart,
+    applyCoupon,
+    removeCoupon,
+    revalidateCart: () => revalidate(items),
+  }), [
+    items,
+    itemCount,
+    subtotal,
+    discount,
+    shippingFee,
+    total,
+    currency,
+    freeShippingRemaining,
+    freeShippingProgress,
+    appliedCoupon,
+    isCouponLoading,
+    isValidating,
+    isCartOpen,
+    openCart,
+    closeCart,
+    toggleCart,
+    addToCart,
+    updateQuantity,
+    removeFromCart,
+    clearCart,
+    applyCoupon,
+    removeCoupon,
+    revalidate,
+  ]);
 
   return (
-    <CartContext.Provider
-      value={{
-        items,
-        itemCount,
-        subtotal,
-        discount,
-        shippingFee,
-        total,
-        freeShippingRemaining,
-        freeShippingProgress,
-        appliedCoupon,
-        isCouponLoading,
-        isCartOpen,
-        openCart: () => setIsCartOpen(true),
-        closeCart: () => setIsCartOpen(false),
-        toggleCart: () => setIsCartOpen((v) => !v),
-        addToCart,
-        updateQuantity,
-        removeFromCart,
-        clearCart,
-        applyCoupon,
-        removeCoupon,
-      }}
-    >
+    <CartContext.Provider value={value}>
       {children}
     </CartContext.Provider>
   );
@@ -179,3 +324,5 @@ export const useCart = () => {
   if (!context) throw new Error('useCart must be used within a CartProvider');
   return context;
 };
+
+export default CartContext;

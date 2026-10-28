@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Lock, CreditCard, ArrowRight } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
+import { customerService } from '../../services/customerService';
 import { orderService } from '../../services/orderService';
 import { paymentService } from '../../services/paymentService';
 import { useToast } from '../../context/ToastContext';
@@ -19,6 +20,7 @@ export const CheckoutPage = () => {
   const navigate = useNavigate();
   const toast = useToast();
 
+  const [savedAddresses, setSavedAddresses] = useState([]);
   const [formData, setFormData] = useState({
     firstName: customer?.firstName || '',
     lastName: customer?.lastName || '',
@@ -36,13 +38,22 @@ export const CheckoutPage = () => {
 
   useEffect(() => {
     if (customer) {
-      setFormData((prev) => ({
-        ...prev,
-        firstName: prev.firstName || customer.firstName || '',
-        lastName: prev.lastName || customer.lastName || '',
-        email: prev.email || customer.email || '',
-        phone: prev.phone || customer.phone || '',
-      }));
+      customerService.getAddresses().then((addrs) => {
+        setSavedAddresses(addrs || []);
+        const defaultAddr = (addrs || []).find((a) => a.isDefault) || addrs?.[0];
+        setFormData((prev) => ({
+          ...prev,
+          firstName: prev.firstName || defaultAddr?.firstName || customer.firstName || '',
+          lastName: prev.lastName || defaultAddr?.lastName || customer.lastName || '',
+          email: prev.email || customer.email || '',
+          phone: prev.phone || defaultAddr?.phone || customer.phone || '',
+          address: prev.address || defaultAddr?.address || '',
+          city: prev.city || defaultAddr?.city || '',
+          state: prev.state || defaultAddr?.state || '',
+          postalCode: prev.postalCode || defaultAddr?.postalCode || '',
+          country: prev.country || defaultAddr?.country || 'United States',
+        }));
+      }).catch(console.error);
     }
   }, [customer]);
 
@@ -198,6 +209,41 @@ export const CheckoutPage = () => {
             <h3 className="text-sm font-bold uppercase tracking-wider text-[#171717] pb-3 border-b border-stone-100">
               2. Shipping Address
             </h3>
+
+            {savedAddresses.length > 0 && (
+              <div className="p-3 bg-stone-50 rounded-xs border border-stone-200 mb-2">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#6B665F] mb-1">
+                  Deliver to Saved Address
+                </label>
+                <select
+                  onChange={(e) => {
+                    const sel = savedAddresses.find((a) => a.id === e.target.value);
+                    if (sel) {
+                      setFormData((prev) => ({
+                        ...prev,
+                        firstName: sel.firstName || prev.firstName,
+                        lastName: sel.lastName || prev.lastName,
+                        phone: sel.phone || prev.phone,
+                        address: sel.address || '',
+                        city: sel.city || '',
+                        state: sel.state || '',
+                        postalCode: sel.postalCode || '',
+                        country: sel.country || 'United States',
+                      }));
+                    }
+                  }}
+                  className="w-full text-xs p-2 bg-white border border-[#DDD8D0] rounded-xs text-[#1C1C1C]"
+                >
+                  <option value="">Choose an existing address...</option>
+                  {savedAddresses.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.address}, {a.city}, {a.country} {a.isDefault ? '(Default)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div>
               <label className="block text-xs uppercase tracking-wider font-semibold text-[#1C1C1C] mb-1.5">
                 Country / Destination

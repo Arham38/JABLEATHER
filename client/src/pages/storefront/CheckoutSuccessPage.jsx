@@ -78,7 +78,9 @@ export const CheckoutSuccessPage = () => {
             <div>
               <span className="text-[#6B665F] block font-medium">Payment Status</span>
               <strong className={`text-sm font-bold capitalize ${order?.paymentStatus === 'paid' ? 'text-emerald-700' : 'text-amber-700'}`}>
-                {order?.paymentStatus || 'Unpaid'}
+                {order?.paymentMethod === 'wire' || order?.paymentMethod === 'cod'
+                  ? 'Awaiting Payment'
+                  : order?.paymentStatus || 'Unpaid'}
               </strong>
             </div>
             <div>
@@ -88,6 +90,34 @@ export const CheckoutSuccessPage = () => {
               </strong>
             </div>
           </div>
+
+          {/* Wire Transfer / COD Instructions Callout */}
+          {(order?.paymentMethod === 'wire' || order?.paymentMethod === 'cod') && (
+            <div className="p-4 bg-amber-50 rounded-xs border border-amber-200 text-xs space-y-2 text-amber-950">
+              <strong className="block font-bold uppercase tracking-wider text-amber-900">
+                {order.paymentMethod === 'wire' ? 'Bank Wire Transfer Settlement' : 'Cash on Delivery (COD)'}
+              </strong>
+              {order.paymentMethod === 'wire' ? (
+                <>
+                  <p className="text-amber-800">
+                    Your order has been recorded. Please wire the invoice amount referencing your order number:
+                  </p>
+                  <div className="p-3 bg-white/80 rounded border border-amber-200 font-mono text-[11px] space-y-0.5">
+                    <p><strong>Bank:</strong> Standard Chartered Pakistan</p>
+                    <p><strong>Account:</strong> JAB LEATHER (PVT) LTD</p>
+                    <p><strong>IBAN:</strong> PK36SCBL0000001123456701</p>
+                    <p><strong>SWIFT:</strong> SCBLPKKA</p>
+                    <p><strong>Reference:</strong> {order.orderNumber || order.id || orderId}</p>
+                  </div>
+                  <p className="text-[11px] text-amber-800">Dispatch will initiate immediately upon wire verification by our Treasury.</p>
+                </>
+              ) : (
+                <p className="text-amber-800">
+                  Payment of {formatCurrency(order?.total, order?.currency)} is due upon courier delivery. Please have the exact amount ready upon courier dispatch.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Purchased Items List */}
           {order?.items && order.items.length > 0 && (
