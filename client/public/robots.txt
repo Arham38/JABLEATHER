@@ -1,0 +1,23 @@
+# JAB LEATHER - Robots configuration
+User-agent: *
+Allow: /
+Allow: /shop
+Allow: /product/
+Allow: /category/
+Allow: /collection/
+Allow: /collections/
+Allow: /about
+Allow: /contact
+Allow: /search
+
+# Protected and dynamic user paths
+Disallow: /admin
+Disallow: /admin/
+Disallow: /account
+Disallow: /account/
+Disallow: /checkout
+Disallow: /checkout/
+Disallow: /sandbox-payment
+Disallow: /api/
+
+Sitemap: https://jableather.com/sitemap.xml

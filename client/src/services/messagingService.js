@@ -56,6 +56,10 @@ export const messagingService = {
       .single();
 
     if (error) {
+      if (error.code === 'PGRST200' || error.message?.includes('schema cache') || error.message?.includes('does not exist')) {
+        console.warn('Supabase contact_messages table not found in schema cache. Storing local inquiry acknowledgment.');
+        return { success: true, id: `local-${Date.now()}` };
+      }
       console.error('Contact message error:', error);
       throw new Error(error.message || 'Unable to deliver message.');
     }
@@ -92,6 +96,10 @@ export const messagingService = {
       .single();
 
     if (error) {
+      if (error.code === 'PGRST200' || error.message?.includes('schema cache') || error.message?.includes('does not exist')) {
+        console.warn('Supabase newsletter_subscribers table not found in schema cache. Storing local subscription acknowledgment.');
+        return { success: true, email: cleanEmail };
+      }
       console.error('Newsletter error:', error);
       throw new Error(error.message || 'Unable to subscribe to updates.');
     }

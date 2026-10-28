@@ -6,6 +6,12 @@
     "dev:client": "cd client && npm run dev",
     "dev:server": "cd server && npm run dev",
     "build:client": "cd client && npm run build",
-    "start:server": "cd server && npm start"
+    "start:server": "cd server && npm start",
+    "test": "npm --prefix client test && npm --prefix server test",
+    "test:e2e": "playwright test",
+    "test:all": "npm test && npm run test:e2e"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1"
   }
 }

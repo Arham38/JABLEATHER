@@ -117,79 +117,75 @@ export const CartProvider = ({ children }) => {
         : color?.name || (product.colors && product.colors[0]?.name) || '';
 
     const cartItemId = `${product.id}-${selectedSize}-${selectedColor}`.replace(/\s+/g, '-');
-    const availableStock = Number(product.stockCount ?? product.stock) || 10;
+    const rawStock = product.stockCount ?? product.stock;
+    const availableStock = (rawStock !== undefined && rawStock !== null && !isNaN(Number(rawStock)))
+      ? Number(rawStock)
+      : 10;
 
     if (availableStock <= 0) {
       toast.error(`"${product.name}" is currently out of stock.`);
       return;
     }
 
-    setItems((prev) => {
-      const existingIndex = prev.findIndex((item) => item.cartItemId === cartItemId);
+    const existing = items.find((item) => item.cartItemId === cartItemId);
+    if (existing) {
+      if (existing.quantity >= availableStock) {
+        toast.warning(`Maximum available stock (${availableStock}) already in your bag.`);
+        return;
+      }
+      const requestedTotal = existing.quantity + quantity;
+      const newQty = Math.min(requestedTotal, availableStock);
+      if (newQty < requestedTotal) {
+        toast.info(`Added ${newQty - existing.quantity} more. Reached maximum stock limit of ${availableStock}.`);
+      } else {
+        toast.success(`Updated ${product.name} quantity to ${newQty}`);
+      }
 
-      if (existingIndex > -1) {
-        const existing = prev[existingIndex];
-        const requestedTotal = existing.quantity + quantity;
-
-        if (existing.quantity >= availableStock) {
-          toast.warning(`Maximum available stock (${availableStock}) already in your bag.`);
-          return prev;
-        }
-
-        const newQty = Math.min(requestedTotal, availableStock);
-        if (newQty < requestedTotal) {
-          toast.info(`Added ${newQty - existing.quantity} more. Reached maximum stock limit of ${availableStock}.`);
-        } else {
-          toast.success(`Updated ${product.name} quantity to ${newQty}`);
-        }
-
-        // Immutable array and object creation
-        return prev.map((item, idx) =>
-          idx === existingIndex
+      setItems((prev) =>
+        prev.map((item) =>
+          item.cartItemId === cartItemId
             ? { ...item, quantity: newQty, stockCount: availableStock }
             : item
-        );
-      } else {
-        const initialQty = Math.min(quantity, availableStock);
-        const effectivePrice = product.salePrice && Number(product.salePrice) > 0 && Number(product.salePrice) < product.price
-          ? Number(product.salePrice)
-          : Number(product.price);
+        )
+      );
+    } else {
+      const initialQty = Math.min(quantity, availableStock);
+      const effectivePrice = product.salePrice && Number(product.salePrice) > 0 && Number(product.salePrice) < product.price
+        ? Number(product.salePrice)
+        : Number(product.price);
 
-        const newItem = {
-          cartItemId,
-          id: product.id,
-          productId: product.id,
-          name: product.name,
-          slug: product.slug,
-          sku: product.sku || '',
-          price: effectivePrice,
-          compareAtPrice: product.compareAtPrice ? Number(product.compareAtPrice) : null,
-          currency: product.currency || 'USD',
-          image: product.images?.[0] || '',
-          size: selectedSize,
-          color: selectedColor,
-          quantity: initialQty,
-          stockCount: availableStock,
-          inStock: true,
-        };
+      const newItem = {
+        cartItemId,
+        id: product.id,
+        productId: product.id,
+        name: product.name,
+        slug: product.slug,
+        sku: product.sku || '',
+        price: effectivePrice,
+        compareAtPrice: product.compareAtPrice ? Number(product.compareAtPrice) : null,
+        currency: product.currency || 'USD',
+        image: product.images?.[0] || '',
+        size: selectedSize,
+        color: selectedColor,
+        quantity: initialQty,
+        stockCount: availableStock,
+        inStock: true,
+      };
 
-        toast.success(`Added ${product.name} (${selectedSize}) to bag`);
-        return [...prev, newItem];
-      }
-    });
+      toast.success(`Added ${product.name} (${selectedSize}) to bag`);
+      setItems((prev) => [...prev, newItem]);
+    }
 
     setIsCartOpen(true);
-  }, [toast]);
+  }, [items, toast]);
 
   const removeFromCart = useCallback((cartItemId) => {
-    setItems((prev) => {
-      const target = prev.find((i) => i.cartItemId === cartItemId);
-      if (target) {
-        toast.info(`Removed ${target.name} from bag`);
-      }
-      return prev.filter((i) => i.cartItemId !== cartItemId);
-    });
-  }, [toast]);
+    const target = items.find((i) => i.cartItemId === cartItemId);
+    if (target) {
+      toast.info(`Removed ${target.name} from bag`);
+    }
+    setItems((prev) => prev.filter((i) => i.cartItemId !== cartItemId));
+  }, [items, toast]);
 
   const updateQuantity = useCallback((cartItemId, newQty) => {
     if (newQty <= 0) {
@@ -197,23 +193,26 @@ export const CartProvider = ({ children }) => {
       return;
     }
 
-    setItems((prev) => {
-      const target = prev.find((item) => item.cartItemId === cartItemId);
-      if (!target) return prev;
+    const target = items.find((item) => item.cartItemId === cartItemId);
+    if (!target) return;
 
-      const maxStock = target.stockCount || 99;
-      if (newQty > maxStock) {
-        toast.warning(`Only ${maxStock} items available in stock.`);
-        return prev.map((item) =>
+    const maxStock = target.stockCount || 99;
+    if (newQty > maxStock) {
+      toast.warning(`Only ${maxStock} items available in stock.`);
+      setItems((prev) =>
+        prev.map((item) =>
           item.cartItemId === cartItemId ? { ...item, quantity: maxStock } : item
-        );
-      }
-
-      return prev.map((item) =>
-        item.cartItemId === cartItemId ? { ...item, quantity: newQty } : item
+        )
       );
-    });
-  }, [removeFromCart, toast]);
+      return;
+    }
+
+    setItems((prev) =>
+      prev.map((item) =>
+        item.cartItemId === cartItemId ? { ...item, quantity: newQty } : item
+      )
+    );
+  }, [items, removeFromCart, toast]);
 
   const clearCart = useCallback(() => {
     setItems([]);

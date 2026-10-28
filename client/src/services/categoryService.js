@@ -1,4 +1,5 @@
 import supabase from '../utils/supabase';
+import { BASELINE_CATEGORIES } from '../data/baselineCatalog';
 
 const CATEGORY_COLUMNS = 'id,legacy_id,name,slug,description,image,parent_id,aliases,show_in_navbar,sort_order,status,created_at,updated_at';
 
@@ -20,22 +21,43 @@ const mapCategory = (row) => ({
   updatedAt: row.updated_at,
 });
 
-const fetchActiveCategories = async () => {
-  const { data, error } = await supabase
-    .from('categories')
-    .select(CATEGORY_COLUMNS)
-    .eq('status', 'active')
-    .order('sort_order', { ascending: true })
-    .order('name', { ascending: true });
+let cachedCategories = null;
+let lastCategoriesFetch = 0;
+const CACHE_TTL_MS = 60000;
 
-  if (error) {
-    if (error.code === 'PGRST200' || error.message?.includes('schema cache') || error.message?.includes('does not exist')) {
-      console.warn('Supabase categories table not found in schema cache. Run supabase/all_migrations_combined.sql in your Supabase SQL Editor.');
-      return [];
-    }
-    throw new Error(`Could not load categories: ${error.message}`);
+const fetchActiveCategories = async () => {
+  if (cachedCategories && Date.now() - lastCategoriesFetch < CACHE_TTL_MS) {
+    return cachedCategories;
   }
-  return (data || []).map(mapCategory);
+  try {
+    const { data, error } = await supabase
+      .from('categories')
+      .select(CATEGORY_COLUMNS)
+      .eq('status', 'active')
+      .order('sort_order', { ascending: true })
+      .order('name', { ascending: true });
+
+    if (error) {
+      console.warn('Supabase categories fetch notice:', error.message);
+      cachedCategories = BASELINE_CATEGORIES;
+      lastCategoriesFetch = Date.now();
+      return BASELINE_CATEGORIES;
+    }
+
+    if (data && data.length > 0) {
+      cachedCategories = data.map(mapCategory);
+      lastCategoriesFetch = Date.now();
+      return cachedCategories;
+    }
+    cachedCategories = BASELINE_CATEGORIES;
+    lastCategoriesFetch = Date.now();
+    return BASELINE_CATEGORIES;
+  } catch (err) {
+    console.warn('Using baseline categories fallback:', err.message);
+    cachedCategories = BASELINE_CATEGORIES;
+    lastCategoriesFetch = Date.now();
+    return BASELINE_CATEGORIES;
+  }
 };
 
 export const categoryService = {

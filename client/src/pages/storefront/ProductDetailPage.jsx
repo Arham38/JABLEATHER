@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Star,
@@ -74,12 +74,16 @@ export const ProductDetailPage = () => {
         setActiveImageIdx(0);
         setQuantity(1);
 
-        const [revs, related] = await Promise.all([
-          reviewService.getProductReviews(prod.id),
-          productService.getRelatedProducts(prod.id, 4),
-        ]);
-        setReviews(revs);
-        setRelatedProducts(related);
+        try {
+          const [revs, related] = await Promise.all([
+            reviewService.getProductReviews(prod.id),
+            productService.getRelatedProducts(prod.id, 4),
+          ]);
+          setReviews(revs || []);
+          setRelatedProducts(related || []);
+        } catch (subErr) {
+          console.warn('Review or related products fetch notice:', subErr.message);
+        }
       } catch (err) {
         console.error('Error loading product:', err);
         setLoadError(err.message || 'Could not load product details.');

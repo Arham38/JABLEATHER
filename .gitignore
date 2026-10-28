@@ -28,5 +28,10 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Coverage
+# Coverage and Test Reports
 coverage/
+test-results/
+playwright-report/
+blob-report/
+.nyc_output/
+
