@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Star, Check, X, ShieldCheck } from 'lucide-react';
-import { adminService } from '../../services/adminService';
+import supabaseAdminService from '../../services/supabaseAdminService';
 import { useToast } from '../../context/ToastContext';
 
 export const AdminReviewsPage = () => {
@@ -8,12 +8,12 @@ export const AdminReviewsPage = () => {
   const toast = useToast();
 
   useEffect(() => {
-    adminService.getReviews().then(setReviews).catch(console.error);
+    supabaseAdminService.getReviews().then(setReviews).catch(console.error);
   }, []);
 
   const handleUpdateStatus = async (id, status) => {
     try {
-      await adminService.updateReviewStatus(id, status);
+      await supabaseAdminService.updateReviewStatus(id, status);
       setReviews(reviews.map((r) => (r.id === id ? { ...r, status } : r)));
       toast.success(`Review status updated to ${status}`);
     } catch {

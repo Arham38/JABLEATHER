@@ -4,38 +4,25 @@ import { mockOrders } from '../data/mockOrders';
 const PROFILE_KEY = 'jab_customer_profile';
 const ADDRESSES_KEY = 'jab_customer_addresses';
 
-const initialProfile = {
-  firstName: 'Alexander',
-  lastName: 'Wright',
-  email: 'alex.wright@example.com',
-  phone: '+1 (555) 234-8901',
-  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+const defaultProfile = {
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: '',
+  avatar: '',
 };
 
-const initialAddresses = [
-  {
-    id: 'addr-1',
-    isDefault: true,
-    firstName: 'Alexander',
-    lastName: 'Wright',
-    address: '742 Evergreen Terrace',
-    city: 'Portland',
-    state: 'OR',
-    postalCode: '97201',
-    country: 'United States',
-    phone: '+1 (555) 234-8901',
-  },
-];
+const defaultAddresses = [];
 
 export const customerService = {
   getProfile: async () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
-    return storage.get(PROFILE_KEY, initialProfile);
+    return storage.get(PROFILE_KEY, defaultProfile);
   },
 
   updateProfile: async (data) => {
     await new Promise((resolve) => setTimeout(resolve, 100));
-    const current = storage.get(PROFILE_KEY, initialProfile);
+    const current = storage.get(PROFILE_KEY, defaultProfile);
     const updated = { ...current, ...data };
     storage.set(PROFILE_KEY, updated);
     return updated;
@@ -43,12 +30,12 @@ export const customerService = {
 
   getAddresses: async () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
-    return storage.get(ADDRESSES_KEY, initialAddresses);
+    return storage.get(ADDRESSES_KEY, defaultAddresses);
   },
 
   saveAddress: async (addressData) => {
     await new Promise((resolve) => setTimeout(resolve, 100));
-    const addresses = storage.get(ADDRESSES_KEY, initialAddresses);
+    const addresses = storage.get(ADDRESSES_KEY, defaultAddresses);
     let updated;
     if (addressData.id) {
       updated = addresses.map((a) => (a.id === addressData.id ? addressData : a));
@@ -61,7 +48,7 @@ export const customerService = {
 
   deleteAddress: async (id) => {
     await new Promise((resolve) => setTimeout(resolve, 100));
-    const addresses = storage.get(ADDRESSES_KEY, initialAddresses);
+    const addresses = storage.get(ADDRESSES_KEY, defaultAddresses);
     const updated = addresses.filter((a) => a.id !== id);
     storage.set(ADDRESSES_KEY, updated);
     return updated;

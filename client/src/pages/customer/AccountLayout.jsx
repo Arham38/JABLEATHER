@@ -1,17 +1,30 @@
 import React from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, ShoppingBag, User, MapPin, Heart, Settings, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Breadcrumbs from '../../components/common/Breadcrumbs';
 
 export const AccountLayout = () => {
-  const { customer, logoutCustomer } = useAuth();
+  const { customer, loading, logoutCustomer } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = async () => {
     await logoutCustomer();
     navigate('/account/login');
   };
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center text-xs text-[#6B665F]">
+        Loading your account session...
+      </div>
+    );
+  }
+
+  if (!customer) {
+    return <Navigate to="/account/login" state={{ from: location }} replace />;
+  }
 
   const navItems = [
     { label: 'Overview', to: '/account', icon: <LayoutDashboard className="w-4 h-4" /> },

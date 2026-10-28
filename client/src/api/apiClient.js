@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { storage } from '../utils/storage';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -11,9 +12,14 @@ export const apiClient = axios.create({
   timeout: 15000,
 });
 
-// Request Interceptor: Attach bearer token if available
+// Request Interceptor: Attach bearer token if available and validate production API URL
 apiClient.interceptors.request.use(
   (config) => {
+    if (!import.meta.env.DEV && !import.meta.env.VITE_API_URL) {
+      return Promise.reject(
+        new Error('Missing required environment variable VITE_API_URL in production build.')
+      );
+    }
     const token = storage.get('jab_auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

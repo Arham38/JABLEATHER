@@ -1,4 +1,47 @@
 import supabase from '../utils/supabase';
+import { storage } from '../utils/storage';
+import { mockCoupons } from '../data/mockCoupons';
+import { mockReviews } from '../data/mockReviews';
+
+const ADMIN_COUPONS_KEY = 'jab_admin_coupons';
+const ADMIN_REVIEWS_KEY = 'jab_admin_reviews';
+const ADMIN_HOMEPAGE_CMS_KEY = 'jab_admin_homepage_cms';
+
+const initialHomepageCms = {
+  hero: {
+    enabled: true,
+    title: 'Premium Leather Jackets, Made for You',
+    subtitle: 'Genuine leather products crafted with attention to detail, quality materials, and timeless style.',
+    desktopImage: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=1920&q=85',
+    mobileImage: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=800&q=85',
+    primaryButtonText: 'Shop Men',
+    secondaryButtonText: 'Shop Women',
+  },
+  shopByCategory: { enabled: true, title: 'Shop By Category' },
+  bestSellers: { enabled: true, title: 'Best Sellers' },
+  newArrivals: { enabled: true, title: 'New Arrivals' },
+  editorialBanner: {
+    enabled: true,
+    title: 'Made for the Road. Designed for Everyday.',
+    subtitle: 'From cross-country open highways to midnight city streets, our full-grain jackets weather every storm.',
+    ctaText: 'Explore Collection',
+    image: 'https://images.unsplash.com/photo-1509539662397-116cb90542f1?auto=format&fit=crop&w=1600&q=85',
+  },
+  featuredCollection: {
+    enabled: true,
+    title: 'The Leather Collection',
+    description: 'Explore timeless leather styles for everyday wear, riding, travel, and modern fashion.',
+    ctaText: 'Explore Collection',
+  },
+  whyChooseUs: { enabled: true, title: 'Why Choose JAB Leather' },
+  workshopStory: { enabled: true, title: 'From Leather to Finished Product' },
+  customWholesale: { enabled: true, title: 'Custom & Wholesale Leather Manufacturing' },
+  catalogCta: { enabled: true, title: 'Explore Our Leather Catalog' },
+  gallery: { enabled: true, title: 'Behind JAB Leather' },
+  reviews: { enabled: true, title: 'What Our Customers Say' },
+  newsletter: { enabled: true, title: 'Stay Updated' },
+  socialSection: { enabled: true, title: 'Follow JAB Leather' },
+};
 
 const PRODUCT_COLUMNS = 'id,legacy_id,name,slug,short_description,description,gender,material,leather_type,lining,closure,fit,care_instructions,seo,price,sale_price,currency,stock,low_stock_threshold,status,featured,best_seller,new_arrival,show_on_homepage,homepage_order,category_id,subcategory_id,category_ids,subcategory_ids,collection_id,tags,variants,images,colors,sizes,sku,created_at,updated_at';
 const CATEGORY_COLUMNS = 'id,legacy_id,name,slug,description,image,parent_id,aliases,show_in_navbar,sort_order,status,created_at,updated_at';
@@ -274,6 +317,88 @@ export const supabaseAdminService = {
     const path = decodeURIComponent(url.slice(index + marker.length));
     const { error } = await supabase.storage.from('product-images').remove([path]);
     if (error) throw error;
+  },
+
+  // Coupons Management
+  async getCoupons() {
+    await requireAdmin();
+    try {
+      const { data, error } = await supabase.from('coupons').select('*').order('created_at', { ascending: false });
+      if (!error && data) return data;
+    } catch {
+      // Fallback to local storage
+    }
+    return storage.get(ADMIN_COUPONS_KEY, mockCoupons);
+  },
+
+  async createCoupon(couponData) {
+    await requireAdmin();
+    try {
+      const { data, error } = await supabase.from('coupons').insert(couponData).select().single();
+      if (!error && data) return data;
+    } catch {
+      // Fallback to local storage
+    }
+    const coupons = storage.get(ADMIN_COUPONS_KEY, mockCoupons);
+    const newCoupon = {
+      id: 'coup-' + Date.now(),
+      usageCount: 0,
+      isActive: true,
+      ...couponData,
+    };
+    const updated = [newCoupon, ...coupons];
+    storage.set(ADMIN_COUPONS_KEY, updated);
+    return newCoupon;
+  },
+
+  // Reviews Moderation
+  async getReviews() {
+    await requireAdmin();
+    try {
+      const { data, error } = await supabase.from('reviews').select('*').order('created_at', { ascending: false });
+      if (!error && data) return data;
+    } catch {
+      // Fallback to local storage
+    }
+    return storage.get(ADMIN_REVIEWS_KEY, mockReviews);
+  },
+
+  async updateReviewStatus(reviewId, status) {
+    await requireAdmin();
+    try {
+      const { data, error } = await supabase.from('reviews').update({ status }).eq('id', reviewId).select().single();
+      if (!error && data) return data;
+    } catch {
+      // Fallback to local storage
+    }
+    const reviews = storage.get(ADMIN_REVIEWS_KEY, mockReviews);
+    const updated = reviews.map((r) => (r.id === reviewId ? { ...r, status } : r));
+    storage.set(ADMIN_REVIEWS_KEY, updated);
+    return updated.find((r) => r.id === reviewId);
+  },
+
+  // Homepage CMS
+  async getHomepageCms() {
+    await requireAdmin();
+    try {
+      const { data, error } = await supabase.from('homepage_cms').select('*').single();
+      if (!error && data?.content) return data.content;
+    } catch {
+      // Fallback to local storage
+    }
+    return storage.get(ADMIN_HOMEPAGE_CMS_KEY, initialHomepageCms);
+  },
+
+  async updateHomepageCms(cmsData) {
+    await requireAdmin();
+    try {
+      const { error } = await supabase.from('homepage_cms').upsert({ id: 'main', content: cmsData, updated_at: new Date().toISOString() });
+      if (!error) return cmsData;
+    } catch {
+      // Fallback to local storage
+    }
+    storage.set(ADMIN_HOMEPAGE_CMS_KEY, cmsData);
+    return cmsData;
   },
 };
 

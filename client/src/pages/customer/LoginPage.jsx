@@ -9,8 +9,8 @@ import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 
 export const LoginPage = () => {
-  const [email, setEmail] = useState('alex.wright@example.com');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
 

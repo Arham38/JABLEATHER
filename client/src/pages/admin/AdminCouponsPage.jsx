@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Tag, Trash2 } from 'lucide-react';
-import { adminService } from '../../services/adminService';
+import supabaseAdminService from '../../services/supabaseAdminService';
 import { useToast } from '../../context/ToastContext';
 
 export const AdminCouponsPage = () => {
@@ -18,13 +18,13 @@ export const AdminCouponsPage = () => {
   const toast = useToast();
 
   useEffect(() => {
-    adminService.getCoupons().then(setCoupons).catch(console.error);
+    supabaseAdminService.getCoupons().then(setCoupons).catch(console.error);
   }, []);
 
   const handleCreate = async (e) => {
     e.preventDefault();
     if (!newCoupon.code) return;
-    const created = await adminService.createCoupon(newCoupon);
+    const created = await supabaseAdminService.createCoupon(newCoupon);
     setCoupons([created, ...coupons]);
     setIsAdding(false);
     toast.success(`Coupon ${created.code} created`);

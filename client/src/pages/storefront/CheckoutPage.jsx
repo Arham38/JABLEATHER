@@ -18,15 +18,15 @@ export const CheckoutPage = () => {
   const toast = useToast();
 
   const [formData, setFormData] = useState({
-    firstName: 'Alexander',
-    lastName: 'Wright',
-    email: 'alex.wright@example.com',
-    phone: '+1 (555) 234-8901',
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
     country: 'United States',
-    address: '742 Evergreen Terrace',
-    city: 'Portland',
-    state: 'OR',
-    postalCode: '97201',
+    address: '',
+    city: '',
+    state: '',
+    postalCode: '',
     sameBillingAsShipping: true,
     billingAddress: '',
     paymentMethod: 'card',
