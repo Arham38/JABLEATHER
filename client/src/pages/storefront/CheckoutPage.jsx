@@ -335,7 +335,7 @@ export const CheckoutPage = () => {
                 <CreditCard className="w-5 h-5 text-[#A66A3F]" />
                 <div className="flex-1 text-xs">
                   <span className="font-bold text-[#171717] block">Credit / Debit Card (Simulated)</span>
-                  <span className="text-[#6B665F]">Instant verification via secure mock processing</span>
+                  <span className="text-[#6B665F]">Instant verification via sandbox gateway</span>
                 </div>
               </label>
 
