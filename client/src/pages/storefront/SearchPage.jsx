@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, Sparkles } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { productService } from '../../services/productService';
 import ProductGrid from '../../components/product/ProductGrid';
 import Breadcrumbs from '../../components/common/Breadcrumbs';
@@ -9,36 +9,46 @@ export const SearchPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get('q') || '';
   const [inputVal, setInputVal] = useState(query);
+  const [prevQuery, setPrevQuery] = useState(query);
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
+  if (prevQuery !== query) {
+    setPrevQuery(query);
     setInputVal(query);
-    if (!query.trim()) {
-      setProducts([]);
-      return;
-    }
+  }
 
+  useEffect(() => {
+    if (!query.trim()) return;
+
+    let isMounted = true;
     const runSearch = async () => {
       setIsLoading(true);
       setError('');
       try {
-        const { products } = await productService.getProducts({
+        const { products: fetched } = await productService.getProducts({
           search: query,
           limit: 24,
         });
-        setProducts(products);
+        if (isMounted) setProducts(fetched);
       } catch (err) {
-        console.error('Search query error:', err);
-        setError(err.message || 'Could not search the catalog.');
+        if (isMounted) {
+          console.error('Search query error:', err);
+          setError(err.message || 'Could not search the catalog.');
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     };
 
     runSearch();
+    return () => {
+      isMounted = false;
+    };
   }, [query]);
+
+  const displayedProducts = query.trim() ? products : [];
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -96,14 +106,14 @@ export const SearchPage = () => {
       {query && (
         <div className="flex items-center justify-between pb-4 border-b border-stone-200 mb-8">
           <p className="text-xs uppercase tracking-wider font-bold text-[#6B665F]">
-            Showing results for "<span className="text-[#171717]">{query}</span>" ({products.length} found)
+            Showing results for "<span className="text-[#171717]">{query}</span>" ({displayedProducts.length} found)
           </p>
         </div>
       )}
 
       {/* Grid */}
       <ProductGrid
-        products={products}
+        products={displayedProducts}
         isLoading={isLoading}
         error={error}
         emptyMessage={`No products found matching "${query}". Try checking your spelling or searching for a generic category like "Jackets" or "Bags".`}

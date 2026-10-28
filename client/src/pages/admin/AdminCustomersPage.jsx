@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Users } from 'lucide-react';
 import supabaseAdminService from '../../services/supabaseAdminService';
 
 export const AdminCustomersPage = () => {

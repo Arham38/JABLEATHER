@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { SlidersHorizontal, ArrowUpDown, X } from 'lucide-react';
+import { SlidersHorizontal, ArrowUpDown } from 'lucide-react';
 import { productService } from '../../services/productService';
 import { categoryService } from '../../services/categoryService';
 import ProductGrid from '../../components/product/ProductGrid';
@@ -8,7 +8,6 @@ import ProductFilters from '../../components/product/ProductFilters';
 import Breadcrumbs from '../../components/common/Breadcrumbs';
 import Pagination from '../../components/common/Pagination';
 import Drawer from '../../components/common/Drawer';
-import Button from '../../components/common/Button';
 
 export const ShopPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Check, ShieldCheck, Scissors, ArrowRight } from 'lucide-react';
+import { Check, ArrowRight } from 'lucide-react';
 import Breadcrumbs from '../../components/common/Breadcrumbs';
 import Button from '../../components/common/Button';
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Image, Upload, Trash2, Check, Copy } from 'lucide-react';
+import { Upload, Trash2, Check, Copy } from 'lucide-react';
 import supabaseAdminService from '../../services/supabaseAdminService';
 import { useToast } from '../../context/ToastContext';
 

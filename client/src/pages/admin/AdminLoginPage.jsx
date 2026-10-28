@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Shield, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import Button from '../../components/common/Button';
 
 export const AdminLoginPage = () => {
   const [email, setEmail] = useState('');

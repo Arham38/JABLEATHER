@@ -1,6 +1,5 @@
 import React from 'react';
-import { X, Check } from 'lucide-react';
-import Button from '../common/Button';
+import { Check } from 'lucide-react';
 import { formatCurrency } from '../../utils/currency';
 
 export const ProductFilters = ({

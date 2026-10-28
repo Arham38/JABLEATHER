@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, MapPin, Check } from 'lucide-react';
+import { Plus, Trash2, MapPin } from 'lucide-react';
 import { customerService } from '../../services/customerService';
 import { useToast } from '../../context/ToastContext';
 import Input from '../../components/common/Input';
