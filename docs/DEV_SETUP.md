@@ -87,6 +87,24 @@ Run the contents of:
 
 ---
 
+### Step 4: Settings, Dynamic Shipping, Coupons, CMS, Reviews, and Messaging
+Run the contents of:
+[`supabase/migrations/20261028000004_phase3_tables_and_rls.sql`](../supabase/migrations/20261028000004_phase3_tables_and_rls.sql)
+
+**What this establishes**:
+- **`public.store_settings`**: Global store configuration (default currency `USD`, exchange rates, atelier address, notification emails).
+- **`public.shipping_methods`**: Dynamic shipping rates (Standard, Express) and international free shipping threshold ($150 USD).
+- **`public.coupons`**: Discount coupons with expiration, usage limits, minimum order amounts, and per-customer restrictions.
+- **`public.homepage_cms`**: Editable homepage sections (hero carousel, trust badges, featured banners, announcement text).
+- **`public.collections` & `public.collection_products`**: Curated product collections with many-to-many product memberships.
+- **`public.reviews`**: Storefront reviews with verified buyer enforcement (checks paid orders) and administrative moderation (`pending`, `approved`, `rejected`).
+- **`public.contact_messages`**: Storefront contact form messages with spam honeypot and status tracking.
+- **`public.newsletter_subscribers`**: Audience subscription management with tokenized unsubscribe support and CSV export.
+- **`public.validate_coupon(...)`**: Server-side coupon validation RPC.
+- **Upgraded `public.create_order(...)`**: Enforces live coupon checks and server-calculated dynamic shipping thresholds directly inside the database transaction.
+
+---
+
 ## 3. Creating an Admin User
 
 ### 3.1 Why `app_metadata`?
