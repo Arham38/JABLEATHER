@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { storage } from '../utils/storage';
+import supabase from '../utils/supabase';
 
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
@@ -12,17 +12,22 @@ export const apiClient = axios.create({
   timeout: 15000,
 });
 
-// Request Interceptor: Attach bearer token if available and validate production API URL
+// Request Interceptor: Attach Supabase bearer token if session exists
 apiClient.interceptors.request.use(
-  (config) => {
+  async (config) => {
     if (!import.meta.env.DEV && !import.meta.env.VITE_API_URL) {
       return Promise.reject(
         new Error('Missing required environment variable VITE_API_URL in production build.')
       );
     }
-    const token = storage.get('jab_auth_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data?.session?.access_token;
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch {
+      // Continue unauthenticated if session retrieval fails
     }
     return config;
   },

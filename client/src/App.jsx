@@ -24,6 +24,7 @@ import ProductDetailPage from './pages/storefront/ProductDetailPage';
 import CartPage from './pages/storefront/CartPage';
 import CheckoutPage from './pages/storefront/CheckoutPage';
 import CheckoutSuccessPage from './pages/storefront/CheckoutSuccessPage';
+import SandboxPaymentPage from './pages/storefront/SandboxPaymentPage';
 import AboutPage from './pages/storefront/AboutPage';
 import ContactPage from './pages/storefront/ContactPage';
 import UnsubscribePage from './pages/storefront/UnsubscribePage';
@@ -97,6 +98,7 @@ function App() {
                     <Route path="cart" element={<CartPage />} />
                     <Route path="checkout" element={<CheckoutPage />} />
                     <Route path="checkout/success" element={<CheckoutSuccessPage />} />
+                    <Route path="sandbox-payment" element={<SandboxPaymentPage />} />
                     
                     {/* Informational */}
                     <Route path="about" element={<AboutPage />} />

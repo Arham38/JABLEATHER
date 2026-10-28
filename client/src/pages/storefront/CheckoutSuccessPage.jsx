@@ -77,10 +77,24 @@ export const CheckoutSuccessPage = () => {
             </div>
             <div>
               <span className="text-[#6B665F] block font-medium">Payment Status</span>
-              <strong className={`text-sm font-bold capitalize ${order?.paymentStatus === 'paid' ? 'text-emerald-700' : 'text-amber-700'}`}>
-                {order?.paymentMethod === 'wire' || order?.paymentMethod === 'cod'
-                  ? 'Awaiting Payment'
-                  : order?.paymentStatus || 'Unpaid'}
+              <strong className={`text-sm font-bold capitalize ${
+                order?.paymentStatus === 'paid'
+                  ? 'text-emerald-700'
+                  : order?.paymentStatus === 'failed'
+                  ? 'text-red-700'
+                  : order?.paymentStatus === 'amount_mismatch'
+                  ? 'text-red-600'
+                  : 'text-amber-700'
+              }`}>
+                {order?.paymentStatus === 'paid'
+                  ? 'Paid & Verified'
+                  : order?.paymentStatus === 'failed'
+                  ? 'Payment Declined / Failed'
+                  : order?.paymentStatus === 'amount_mismatch'
+                  ? 'Under Review (Amount Mismatch)'
+                  : order?.paymentMethod === 'wire'
+                  ? 'Awaiting Bank Wire'
+                  : 'Awaiting Payment Settlement'}
               </strong>
             </div>
             <div>

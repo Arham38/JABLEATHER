@@ -434,6 +434,52 @@ export const supabaseAdminService = {
     }
     return cmsData;
   },
+
+  // Payment Tracking & Audit Log
+  async getPaymentsList(limit = 50) {
+    await requireAdmin();
+    const { data, error } = await supabase
+      .from('payments')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.warn('Could not query payments table:', error.message);
+      return [];
+    }
+    return data || [];
+  },
+
+  async getOrderPayments(orderNumber) {
+    await requireAdmin();
+    const { data, error } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('order_number', orderNumber)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.warn('Could not query order payments:', error.message);
+      return [];
+    }
+    return data || [];
+  },
+
+  async getOrderAuditLog(orderNumber) {
+    await requireAdmin();
+    const { data, error } = await supabase
+      .from('payment_audit_log')
+      .select('*')
+      .eq('order_number', orderNumber)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.warn('Could not query payment audit log:', error.message);
+      return [];
+    }
+    return data || [];
+  },
 };
 
 export default supabaseAdminService;

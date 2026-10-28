@@ -88,13 +88,7 @@ export const CheckoutPage = () => {
 
     setIsProcessing(true);
     try {
-      // 1. Simulate gateway processing (UI sandbox mode)
-      await paymentService.simulatePaymentProcessing({
-        method: formData.paymentMethod,
-        amount: total,
-      });
-
-      // 2. Create order record atomically via database RPC
+      // 1. Create order record atomically via database RPC
       const order = await orderService.createOrder({
         customer: {
           name: `${formData.firstName} ${formData.lastName}`.trim(),
@@ -114,10 +108,28 @@ export const CheckoutPage = () => {
         currency,
       });
 
-      clearCart();
       const orderRef = order.orderNumber || order.id;
+
+      // 2. Initiate payment session on backend (never passing amounts from client)
+      let paymentSession = null;
+      try {
+        paymentSession = await paymentService.createPayment(
+          orderRef,
+          formData.paymentMethod === 'card' ? 'sandbox' : 'manual'
+        );
+      } catch (pErr) {
+        console.warn('Backend payment session notice:', pErr.message);
+      }
+
+      clearCart();
       toast.success(`Order ${orderRef} placed successfully!`);
-      navigate(`/checkout/success?orderId=${orderRef}&email=${encodeURIComponent(formData.email)}`);
+
+      if (formData.paymentMethod === 'card') {
+        const dest = paymentSession?.redirectUrl || `/sandbox-payment?order=${encodeURIComponent(orderRef)}&amount=${encodeURIComponent(total)}&currency=${encodeURIComponent(currency)}`;
+        window.location.href = dest;
+      } else {
+        navigate(`/checkout/success?orderId=${orderRef}&email=${encodeURIComponent(formData.email)}`);
+      }
     } catch (err) {
       toast.error(err.message || 'Order completion failed');
     } finally {
