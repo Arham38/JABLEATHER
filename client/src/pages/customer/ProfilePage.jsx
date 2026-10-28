@@ -9,18 +9,24 @@ export const ProfilePage = () => {
   const { customer } = useAuth();
   const toast = useToast();
   const [profile, setProfile] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
+    firstName: customer?.firstName || '',
+    lastName: customer?.lastName || '',
+    email: customer?.email || '',
+    phone: customer?.phone || '',
   });
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     customerService.getProfile().then((p) => {
-      if (p) setProfile(p);
+      if (p) {
+        setProfile((prev) => ({
+          ...prev,
+          ...p,
+          email: p.email || customer?.email || prev.email,
+        }));
+      }
     });
-  }, []);
+  }, [customer]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

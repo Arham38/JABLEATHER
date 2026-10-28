@@ -1,69 +1,242 @@
-import { storage } from '../utils/storage';
-import { mockOrders } from '../data/mockOrders';
+import supabase from '../utils/supabase';
 
-const PROFILE_KEY = 'jab_customer_profile';
-const ADDRESSES_KEY = 'jab_customer_addresses';
-
-const defaultProfile = {
-  firstName: '',
-  lastName: '',
-  email: '',
-  phone: '',
-  avatar: '',
-};
-
-const defaultAddresses = [];
+const mapAddress = (row) => ({
+  id: row.id,
+  firstName: row.first_name || '',
+  lastName: row.last_name || '',
+  phone: row.phone || '',
+  address: row.address_line1 || '',
+  addressLine2: row.address_line2 || '',
+  city: row.city || '',
+  state: row.state || '',
+  postalCode: row.postal_code || '',
+  country: row.country || 'United States',
+  isDefault: Boolean(row.is_default),
+  createdAt: row.created_at,
+});
 
 export const customerService = {
+  // Fetch profile for authenticated user from Supabase profiles table
   getProfile: async () => {
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    return storage.get(PROFILE_KEY, defaultProfile);
-  },
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) return null;
 
-  updateProfile: async (data) => {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    const current = storage.get(PROFILE_KEY, defaultProfile);
-    const updated = { ...current, ...data };
-    storage.set(PROFILE_KEY, updated);
-    return updated;
-  },
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle();
 
-  getAddresses: async () => {
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    return storage.get(ADDRESSES_KEY, defaultAddresses);
-  },
-
-  saveAddress: async (addressData) => {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    const addresses = storage.get(ADDRESSES_KEY, defaultAddresses);
-    let updated;
-    if (addressData.id) {
-      updated = addresses.map((a) => (a.id === addressData.id ? addressData : a));
-    } else {
-      updated = [...addresses, { ...addressData, id: 'addr-' + Date.now() }];
+      if (!error && profile) {
+        return {
+          id: user.id,
+          email: user.email,
+          firstName: profile.first_name || '',
+          lastName: profile.last_name || '',
+          phone: profile.phone || '',
+          avatar: profile.avatar_url || '',
+        };
+      }
+    } catch {
+      // Fallback to user_metadata if profiles table is not yet applied
     }
-    storage.set(ADDRESSES_KEY, updated);
-    return updated;
+
+    const meta = user.user_metadata || {};
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: meta.first_name || '',
+      lastName: meta.last_name || '',
+      phone: meta.phone || '',
+      avatar: meta.avatar_url || '',
+    };
   },
 
+  // Update profile in Supabase profiles table and auth user metadata
+  updateProfile: async (data) => {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) throw new Error('Authentication required to update profile.');
+
+    const fullName = `${data.firstName || ''} ${data.lastName || ''}`.trim();
+
+    // 1. Update public.profiles row
+    try {
+      await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          first_name: data.firstName?.trim() || '',
+          last_name: data.lastName?.trim() || '',
+          name: fullName || null,
+          phone: data.phone?.trim() || '',
+          avatar_url: data.avatar || '',
+          updated_at: new Date().toISOString(),
+        });
+    } catch {
+      // Graceful if profiles table is pending review
+    }
+
+    // 2. Sync user_metadata in Supabase Auth
+    await supabase.auth.updateUser({
+      data: {
+        name: fullName,
+        first_name: data.firstName?.trim() || '',
+        last_name: data.lastName?.trim() || '',
+        phone: data.phone?.trim() || '',
+      },
+    });
+
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: data.firstName || '',
+      lastName: data.lastName || '',
+      phone: data.phone || '',
+      avatar: data.avatar || '',
+    };
+  },
+
+  // Get addresses for authenticated user from Supabase addresses table
+  getAddresses: async () => {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) return [];
+
+    try {
+      const { data, error } = await supabase
+        .from('addresses')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('is_default', { ascending: false })
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return (data || []).map(mapAddress);
+    } catch (err) {
+      console.warn('Unable to load addresses from Supabase:', err.message);
+      return [];
+    }
+  },
+
+  // Insert or update address in Supabase addresses table
+  saveAddress: async (addressData) => {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) throw new Error('Authentication required to save addresses.');
+
+    const isDefault = Boolean(addressData.isDefault);
+
+    // If marked default, unset default on other addresses first
+    if (isDefault) {
+      try {
+        await supabase
+          .from('addresses')
+          .update({ is_default: false })
+          .eq('user_id', user.id);
+      } catch {
+        // Continue
+      }
+    }
+
+    const row = {
+      user_id: user.id,
+      first_name: addressData.firstName?.trim() || '',
+      last_name: addressData.lastName?.trim() || '',
+      phone: addressData.phone?.trim() || '',
+      address_line1: (addressData.address || addressData.address_line1 || '').trim(),
+      address_line2: (addressData.addressLine2 || addressData.address_line2 || '').trim(),
+      city: addressData.city?.trim() || '',
+      state: addressData.state?.trim() || '',
+      postal_code: (addressData.postalCode || addressData.postal_code || '').trim(),
+      country: addressData.country?.trim() || 'United States',
+      is_default: isDefault,
+      updated_at: new Date().toISOString(),
+    };
+
+    const isExistingUuid = addressData.id && typeof addressData.id === 'string' && addressData.id.includes('-');
+
+    if (isExistingUuid) {
+      const { error } = await supabase
+        .from('addresses')
+        .update(row)
+        .eq('id', addressData.id)
+        .eq('user_id', user.id);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from('addresses')
+        .insert(row);
+      if (error) throw error;
+    }
+
+    return customerService.getAddresses();
+  },
+
+  // Delete address
   deleteAddress: async (id) => {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    const addresses = storage.get(ADDRESSES_KEY, defaultAddresses);
-    const updated = addresses.filter((a) => a.id !== id);
-    storage.set(ADDRESSES_KEY, updated);
-    return updated;
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) throw new Error('Authentication required to delete addresses.');
+
+    const { error } = await supabase
+      .from('addresses')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id);
+
+    if (error) throw error;
+    return customerService.getAddresses();
   },
 
+  // Customer order history from Supabase orders table
   getCustomerOrders: async () => {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    return [...mockOrders];
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) return [];
+
+    const { data, error } = await supabase
+      .from('orders')
+      .select('id,order_number,customer,shipping_address,items,subtotal,shipping,tax,total,currency,payment_method,payment_status,order_status,created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.warn('Could not query customer orders:', error.message);
+      return [];
+    }
+
+    return (data || []).map((row) => ({
+      ...row,
+      id: row.order_number,
+      databaseId: row.id,
+      date: row.created_at,
+      shippingFee: Number(row.shipping) || 0,
+      total: Number(row.total) || 0,
+      subtotal: Number(row.subtotal) || 0,
+    }));
   },
 
-  getOrderById: async (id) => {
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    const order = mockOrders.find((o) => o.id === id);
-    if (!order) throw new Error(`Order ${id} not found`);
-    return order;
+  // Get single order for customer
+  getOrderById: async (orderNumber) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    let query = supabase
+      .from('orders')
+      .select('*')
+      .eq('order_number', orderNumber);
+
+    if (user) {
+      query = query.eq('user_id', user.id);
+    }
+
+    const { data, error } = await query.single();
+    if (error || !data) throw new Error(`Order #${orderNumber} not found.`);
+
+    return {
+      ...data,
+      id: data.order_number,
+      databaseId: data.id,
+      date: data.created_at,
+      shippingFee: Number(data.shipping) || 0,
+      total: Number(data.total) || 0,
+      subtotal: Number(data.subtotal) || 0,
+    };
   },
 };
 
