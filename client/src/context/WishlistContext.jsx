@@ -5,15 +5,11 @@ import { useToast } from './ToastContext';
 const WishlistContext = createContext(null);
 
 export const WishlistProvider = ({ children }) => {
-  const [wishlistItems, setWishlistItems] = useState([]);
-  const toast = useToast();
-
-  useEffect(() => {
+  const [wishlistItems, setWishlistItems] = useState(() => {
     const saved = wishlistService.getWishlist();
-    if (saved && Array.isArray(saved)) {
-      setWishlistItems(saved);
-    }
-  }, []);
+    return Array.isArray(saved) ? saved : [];
+  });
+  const toast = useToast();
 
   useEffect(() => {
     wishlistService.saveWishlist(wishlistItems);

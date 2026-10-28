@@ -14,45 +14,57 @@ export const SearchOverlay = () => {
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [recentSearches, setRecentSearches] = useState([]);
+  const [recentSearches, setRecentSearches] = useState(() =>
+    storage.get(RECENT_SEARCHES_KEY, ['Biker Jacket', 'Weekender Duffel', 'Belts', 'Lambskin'])
+  );
   const inputRef = useRef(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const [prevSearchOpen, setPrevSearchOpen] = useState(isSearchOpen);
+  if (prevSearchOpen !== isSearchOpen) {
+    setPrevSearchOpen(isSearchOpen);
     if (isSearchOpen) {
-      inputRef.current?.focus();
       setRecentSearches(storage.get(RECENT_SEARCHES_KEY, ['Biker Jacket', 'Weekender Duffel', 'Belts', 'Lambskin']));
     } else {
       setQuery('');
       setResults([]);
     }
+  }
+
+  useEffect(() => {
+    if (isSearchOpen) {
+      inputRef.current?.focus();
+    }
   }, [isSearchOpen]);
 
   // Live search debounce
   useEffect(() => {
-    if (!query.trim()) {
-      setResults([]);
-      setError('');
-      setIsLoading(false);
-      return;
-    }
+    if (!query.trim()) return;
 
-    setIsLoading(true);
-    setError('');
+    let isMounted = true;
     const timeout = setTimeout(async () => {
+      setIsLoading(true);
+      setError('');
       try {
         const { products } = await productService.getProducts({ search: query, limit: 5 });
-        setResults(products);
+        if (isMounted) setResults(products);
       } catch (err) {
-        console.error('Search error:', err);
-        setError(err.message || 'Could not search the catalog.');
+        if (isMounted) {
+          console.error('Search error:', err);
+          setError(err.message || 'Could not search the catalog.');
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     }, 200);
 
-    return () => clearTimeout(timeout);
+    return () => {
+      isMounted = false;
+      clearTimeout(timeout);
+    };
   }, [query]);
+
+  const displayedResults = query.trim() ? results : [];
 
   const handleSearchSubmit = (searchQuery) => {
     const q = searchQuery || query;
@@ -123,15 +135,15 @@ export const SearchOverlay = () => {
             {query.trim() !== '' ? (
               <div>
                 <div className="flex items-center justify-between mb-3 text-xs font-bold uppercase tracking-wider text-[#6B665F]">
-                  <span>Product Results ({results.length})</span>
+                  <span>Product Results ({displayedResults.length})</span>
                   {isLoading && <span className="animate-pulse">Searching...</span>}
                 </div>
 
                 {error ? (
                   <p role="alert" className="py-6 text-center text-sm text-red-700">{error}</p>
-                ) : results.length > 0 ? (
+                ) : displayedResults.length > 0 ? (
                   <div className="space-y-3">
-                    {results.map((product) => (
+                    {displayedResults.map((product) => (
                       <Link
                         key={product.id}
                         to={`/product/${product.slug}`}

@@ -46,11 +46,11 @@ export const ForgotPasswordPage = () => {
         {isSent ? (
           <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xs text-center space-y-3">
             <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
-            <p className="text-xs text-emerald-900">
-              A password reset link has been dispatched to <strong>{email}</strong> (simulated).
+            <p className="text-xs text-emerald-900 leading-relaxed">
+              A secure password reset link has been dispatched to <strong>{email}</strong>. Please check your email inbox to update your password.
             </p>
-            <Link to="/account/reset-password?token=demo_token">
-              <Button variant="outline" size="sm">Go to Set New Password</Button>
+            <Link to="/account/login">
+              <Button variant="outline" size="sm">Back to Sign In</Button>
             </Link>
           </div>
         ) : (

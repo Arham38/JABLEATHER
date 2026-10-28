@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, Trash2, ShoppingBag, ArrowRight } from 'lucide-react';
+import { Heart, Trash2, ShoppingBag } from 'lucide-react';
 import { useWishlist } from '../../context/WishlistContext';
 import { useCart } from '../../context/CartContext';
 import { formatCurrency } from '../../utils/currency';

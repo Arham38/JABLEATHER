@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Truck, Globe, ShieldCheck, Save, Clock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Truck, Globe, ShieldCheck, Save, Loader2 } from 'lucide-react';
+import { settingsService } from '../../services/settingsService';
 import { useToast } from '../../context/ToastContext';
 
 export const AdminShippingPage = () => {
@@ -14,16 +15,38 @@ export const AdminShippingPage = () => {
     enableInternational: true,
     enableInsurance: true,
   });
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const handleSave = (e) => {
+  useEffect(() => {
+    settingsService.getSection('shipping')
+      .then((cfg) => {
+        if (cfg) setShippingConfig((prev) => ({ ...prev, ...cfg }));
+      })
+      .catch((err) => toast.error(err.message || 'Failed to load shipping settings'))
+      .finally(() => setLoading(false));
+  }, [toast]);
+
+  const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
-    setTimeout(() => {
+    try {
+      await settingsService.updateSection('shipping', shippingConfig);
+      toast.success('Shipping configurations saved to Supabase');
+    } catch (err) {
+      toast.error(`Save failed: ${err.message}`);
+    } finally {
       setSaving(false);
-      toast.success('Shipping configurations saved');
-    }, 300);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[300px]">
+        <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-4xl">

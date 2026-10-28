@@ -1,4 +1,41 @@
 import supabase from '../utils/supabase';
+import { couponService } from './couponService';
+
+const initialHomepageCms = {
+  hero: {
+    enabled: true,
+    title: 'Premium Leather Jackets, Made for You',
+    subtitle: 'Genuine leather products crafted with attention to detail, quality materials, and timeless style.',
+    desktopImage: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=1920&q=85',
+    mobileImage: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=800&q=85',
+    primaryButtonText: 'Shop Men',
+    secondaryButtonText: 'Shop Women',
+  },
+  shopByCategory: { enabled: true, title: 'Shop By Category' },
+  bestSellers: { enabled: true, title: 'Best Sellers' },
+  newArrivals: { enabled: true, title: 'New Arrivals' },
+  editorialBanner: {
+    enabled: true,
+    title: 'Made for the Road. Designed for Everyday.',
+    subtitle: 'From cross-country open highways to midnight city streets, our full-grain jackets weather every storm.',
+    ctaText: 'Explore Collection',
+    image: 'https://images.unsplash.com/photo-1509539662397-116cb90542f1?auto=format&fit=crop&w=1600&q=85',
+  },
+  featuredCollection: {
+    enabled: true,
+    title: 'The Leather Collection',
+    description: 'Explore timeless leather styles for everyday wear, riding, travel, and modern fashion.',
+    ctaText: 'Explore Collection',
+  },
+  whyChooseUs: { enabled: true, title: 'Why Choose JAB Leather' },
+  workshopStory: { enabled: true, title: 'From Leather to Finished Product' },
+  customWholesale: { enabled: true, title: 'Custom & Wholesale Leather Manufacturing' },
+  catalogCta: { enabled: true, title: 'Explore Our Leather Catalog' },
+  gallery: { enabled: true, title: 'Behind JAB Leather' },
+  reviews: { enabled: true, title: 'What Our Customers Say' },
+  newsletter: { enabled: true, title: 'Stay Updated' },
+  socialSection: { enabled: true, title: 'Follow JAB Leather' },
+};
 
 const PRODUCT_COLUMNS = 'id,legacy_id,name,slug,short_description,description,gender,material,leather_type,lining,closure,fit,care_instructions,seo,price,sale_price,currency,stock,low_stock_threshold,status,featured,best_seller,new_arrival,show_on_homepage,homepage_order,category_id,subcategory_id,category_ids,subcategory_ids,collection_id,tags,variants,images,colors,sizes,sku,created_at,updated_at';
 const CATEGORY_COLUMNS = 'id,legacy_id,name,slug,description,image,parent_id,aliases,show_in_navbar,sort_order,status,created_at,updated_at';
@@ -81,15 +118,19 @@ const toProductRow = (form) => ({
 
 const mapOrder = (row) => ({
   ...row,
-  id: row.order_number,
+  id: row.order_number || row.id,
   databaseId: row.id,
+  orderNumber: row.order_number,
   date: row.created_at,
   customer: row.customer || {},
   shippingAddress: row.shipping_address || {},
   items: row.items || [],
   shippingFee: Number(row.shipping) || 0,
-  paymentStatus: row.payment_status,
-  orderStatus: row.order_status,
+  discount: Number(row.discount) || 0,
+  tax: Number(row.tax) || 0,
+  paymentStatus: row.payment_status || 'unpaid',
+  orderStatus: row.order_status || 'pending',
+  trackingNumber: row.payment_reference || '',
   total: Number(row.total) || 0,
   subtotal: Number(row.subtotal) || 0,
 });
@@ -177,16 +218,30 @@ export const supabaseAdminService = {
     return data.map(mapOrder);
   },
 
-  async getOrderById(orderNumber) {
+  async getOrderById(orderIdentifier) {
     await requireAdmin();
-    const { data, error } = await supabase.from('orders').select('id,order_number,customer,shipping_address,items,subtotal,shipping,tax,total,currency,payment_method,payment_provider,payment_transaction_id,payment_reference,payment_status,order_status,created_at,updated_at').eq('order_number', orderNumber).single();
+    let query = supabase.from('orders').select('id,order_number,customer,shipping_address,items,subtotal,shipping,tax,total,currency,payment_method,payment_provider,payment_transaction_id,payment_reference,payment_status,order_status,created_at,updated_at');
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderIdentifier);
+    if (isUuid) {
+      query = query.eq('id', orderIdentifier);
+    } else {
+      query = query.eq('order_number', orderIdentifier);
+    }
+    const { data, error } = await query.single();
     if (error) throw error;
     return mapOrder(data);
   },
 
-  async updateOrderStatus(orderNumber, status) {
+  async updateOrderStatus(orderIdentifier, status) {
     await requireAdmin();
-    const { data, error } = await supabase.from('orders').update({ order_status: status.toLowerCase() }).eq('order_number', orderNumber).select('id,order_number,customer,shipping_address,items,subtotal,shipping,tax,total,currency,payment_method,payment_provider,payment_transaction_id,payment_reference,payment_status,order_status,created_at,updated_at').single();
+    let query = supabase.from('orders').update({ order_status: status.toLowerCase() });
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderIdentifier);
+    if (isUuid) {
+      query = query.eq('id', orderIdentifier);
+    } else {
+      query = query.eq('order_number', orderIdentifier);
+    }
+    const { data, error } = await query.select('id,order_number,customer,shipping_address,items,subtotal,shipping,tax,total,currency,payment_method,payment_provider,payment_transaction_id,payment_reference,payment_status,order_status,created_at,updated_at').single();
     if (error) throw error;
     return mapOrder(data);
   },
@@ -274,6 +329,156 @@ export const supabaseAdminService = {
     const path = decodeURIComponent(url.slice(index + marker.length));
     const { error } = await supabase.storage.from('product-images').remove([path]);
     if (error) throw error;
+  },
+
+  // Coupons Management
+  async getCoupons() {
+    await requireAdmin();
+    return couponService.getAllCoupons();
+  },
+
+  async createCoupon(couponData) {
+    await requireAdmin();
+    return couponService.saveCoupon(couponData);
+  },
+
+  async deleteCoupon(id) {
+    await requireAdmin();
+    return couponService.deleteCoupon(id);
+  },
+
+  // Reviews Moderation
+  async getReviews() {
+    await requireAdmin();
+    const { data, error } = await supabase
+      .from('reviews')
+      .select('*, products(name, slug)')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.warn('Could not load reviews from Supabase:', error.message);
+      return [];
+    }
+
+    return (data || []).map((r) => ({
+      id: r.id,
+      productId: r.product_id,
+      productName: r.products?.name || 'Leather Item',
+      customerName: r.customer_name,
+      customerEmail: r.customer_email,
+      rating: r.rating,
+      title: r.title,
+      comment: r.comment,
+      status: r.status,
+      verifiedPurchase: Boolean(r.verified_purchase),
+      date: r.created_at,
+    }));
+  },
+
+  async updateReviewStatus(reviewId, status) {
+    await requireAdmin();
+    const { data, error } = await supabase
+      .from('reviews')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', reviewId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteReview(reviewId) {
+    await requireAdmin();
+    const { error } = await supabase
+      .from('reviews')
+      .delete()
+      .eq('id', reviewId);
+
+    if (error) throw error;
+    return true;
+  },
+
+  // Homepage CMS
+  async getHomepageCms() {
+    await requireAdmin();
+    const { data, error } = await supabase
+      .from('homepage_cms')
+      .select('*');
+
+    if (error || !data || data.length === 0) {
+      return initialHomepageCms;
+    }
+
+    const cms = { ...initialHomepageCms };
+    for (const row of data) {
+      if (row.id && row.content) {
+        cms[row.id] = { ...(cms[row.id] || {}), ...row.content };
+      }
+    }
+    return cms;
+  },
+
+  async updateHomepageCms(cmsData) {
+    await requireAdmin();
+    const entries = Object.entries(cmsData);
+    for (const [key, val] of entries) {
+      const { error } = await supabase
+        .from('homepage_cms')
+        .upsert({
+          id: key,
+          content: val,
+          updated_at: new Date().toISOString(),
+        });
+      if (error) throw error;
+    }
+    return cmsData;
+  },
+
+  // Payment Tracking & Audit Log
+  async getPaymentsList(limit = 50) {
+    await requireAdmin();
+    const { data, error } = await supabase
+      .from('payments')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.warn('Could not query payments table:', error.message);
+      return [];
+    }
+    return data || [];
+  },
+
+  async getOrderPayments(orderNumber) {
+    await requireAdmin();
+    const { data, error } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('order_number', orderNumber)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.warn('Could not query order payments:', error.message);
+      return [];
+    }
+    return data || [];
+  },
+
+  async getOrderAuditLog(orderNumber) {
+    await requireAdmin();
+    const { data, error } = await supabase
+      .from('payment_audit_log')
+      .select('*')
+      .eq('order_number', orderNumber)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.warn('Could not query payment audit log:', error.message);
+      return [];
+    }
+    return data || [];
   },
 };
 

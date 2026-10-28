@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, Download, Send, CheckCircle2 } from 'lucide-react';
+import { FileText, Download, Send } from 'lucide-react';
 import { catalogService } from '../../services/catalogService';
 import { useToast } from '../../context/ToastContext';
 
@@ -9,6 +9,24 @@ export const AdminCatalogPage = () => {
   const [companyName, setCompanyName] = useState('');
   const [isSending, setIsSending] = useState(false);
   const toast = useToast();
+
+  const handleDownload = async (e) => {
+    e.preventDefault();
+    try {
+      const csv = await catalogService.exportCatalogCsv();
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `jab-leather-wholesale-catalog-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast.success('Wholesale product specifications exported.');
+    } catch (err) {
+      toast.error(`Export failed: ${err.message}`);
+    }
+  };
 
   const handleSendCatalog = async (e) => {
     e.preventDefault();
@@ -21,7 +39,7 @@ export const AdminCatalogPage = () => {
       setRecipientEmail('');
       setCompanyName('');
     } catch (err) {
-      toast.error('Failed to dispatch catalog');
+      toast.error(err.message || 'Failed to dispatch catalog');
     } finally {
       setIsSending(false);
     }
@@ -74,17 +92,13 @@ export const AdminCatalogPage = () => {
           </div>
 
           <div className="flex gap-3">
-            <a
-              href="#download"
-              onClick={(e) => {
-                e.preventDefault();
-                toast.info('Downloading catalog PDF preview...');
-              }}
+            <button
+              onClick={handleDownload}
               className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs uppercase tracking-wider rounded transition"
             >
               <Download className="w-4 h-4" />
-              <span>Download PDF</span>
-            </a>
+              <span>Export Product Catalog</span>
+            </button>
           </div>
         </div>
 

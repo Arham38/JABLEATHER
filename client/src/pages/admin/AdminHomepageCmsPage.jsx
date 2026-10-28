@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Sliders, Save, Check } from 'lucide-react';
-import { adminService } from '../../services/adminService';
+import { Save } from 'lucide-react';
+import supabaseAdminService from '../../services/supabaseAdminService';
 import { useToast } from '../../context/ToastContext';
 
 export const AdminHomepageCmsPage = () => {
@@ -9,7 +9,7 @@ export const AdminHomepageCmsPage = () => {
   const toast = useToast();
 
   useEffect(() => {
-    adminService.getHomepageCms().then(setCms).catch(console.error);
+    supabaseAdminService.getHomepageCms().then(setCms).catch(console.error);
   }, []);
 
   const handleToggle = (key) => {
@@ -35,7 +35,7 @@ export const AdminHomepageCmsPage = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await adminService.updateHomepageCms(cms);
+      await supabaseAdminService.updateHomepageCms(cms);
       toast.success('Homepage CMS sections saved successfully');
     } catch {
       toast.error('Failed to save CMS settings');

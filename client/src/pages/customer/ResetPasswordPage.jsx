@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { authService } from '../../services/authService';
 import { useToast } from '../../context/ToastContext';
 import Breadcrumbs from '../../components/common/Breadcrumbs';
@@ -26,7 +26,7 @@ export const ResetPasswordPage = () => {
 
     setIsLoading(true);
     try {
-      await authService.resetPassword('token', password);
+      await authService.resetPassword(password);
       toast.success('Your password has been updated! Please sign in.');
       navigate('/account/login');
     } catch {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, Tag, Check, Truck } from 'lucide-react';
+import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, Tag, Truck } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { formatCurrency } from '../../utils/currency';
 import Drawer from '../common/Drawer';

@@ -1,23 +1,21 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Lock, Mail, ArrowRight, User } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { useToast } from '../../context/ToastContext';
 import { validateLoginForm } from '../../utils/validation';
 import Breadcrumbs from '../../components/common/Breadcrumbs';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 
 export const LoginPage = () => {
-  const [email, setEmail] = useState('alex.wright@example.com');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
 
   const { loginCustomer } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const toast = useToast();
 
   const from = location.state?.from?.pathname || '/account';
 

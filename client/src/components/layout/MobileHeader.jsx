@@ -22,10 +22,11 @@ export const MobileHeader = () => {
   const { customer, isAuthenticated } = useAuth();
   const location = useLocation();
 
-  // Close drawer on route change
-  useEffect(() => {
+  const [prevPathname, setPrevPathname] = useState(location.pathname);
+  if (prevPathname !== location.pathname) {
+    setPrevPathname(location.pathname);
     setIsOpen(false);
-  }, [location.pathname]);
+  }
 
   // Lock body scroll when mobile drawer is open
   useEffect(() => {

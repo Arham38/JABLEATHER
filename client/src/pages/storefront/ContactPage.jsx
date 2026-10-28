@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Mail, Phone, MapPin, MessageSquare, Send, CheckCircle2, ChevronDown } from 'lucide-react';
+import { Mail, Phone, MapPin, MessageSquare, Send, CheckCircle2 } from 'lucide-react';
+import { messagingService } from '../../services/messagingService';
 import { useToast } from '../../context/ToastContext';
 import Breadcrumbs from '../../components/common/Breadcrumbs';
 import Input from '../../components/common/Input';
@@ -15,10 +16,11 @@ export const ContactPage = () => {
     phone: '',
     message: '',
   });
+  const [honeypot, setHoneypot] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSent, setIsSent] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.email || !formData.message) {
       toast.error('Please fill in your name, email, and message');
@@ -26,11 +28,22 @@ export const ContactPage = () => {
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      await messagingService.submitContactMessage({
+        name: formData.name,
+        email: formData.email,
+        subject: `[${formData.inquiryType}] ${formData.company ? `(${formData.company})` : ''}`,
+        message: formData.message,
+        phone: formData.phone,
+        honeypot,
+      });
       setIsSent(true);
       toast.success('Your message has been received! Our export desk will reply within 24 hours.');
-    }, 500);
+    } catch (err) {
+      toast.error(err.message || 'Could not send message. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -84,6 +97,16 @@ export const ContactPage = () => {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Anti-spam honeypot */}
+              <input
+                type="text"
+                name="b_website"
+                value={honeypot}
+                onChange={(e) => setHoneypot(e.target.value)}
+                style={{ display: 'none' }}
+                tabIndex={-1}
+                autoComplete="off"
+              />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
                   label="Your Full Name"

@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Lock, CreditCard, ShieldCheck, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Lock, CreditCard, ArrowRight } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
+import { customerService } from '../../services/customerService';
 import { orderService } from '../../services/orderService';
 import { paymentService } from '../../services/paymentService';
 import { useToast } from '../../context/ToastContext';
@@ -12,25 +14,48 @@ import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 
 export const CheckoutPage = () => {
-  const { items, subtotal, discount, shippingFee, total, clearCart } = useCart();
+  const { items, subtotal, discount, shippingFee, total, clearCart, appliedCoupon } = useCart();
+  const { customer } = useAuth();
   const currency = items[0]?.currency || 'USD';
   const navigate = useNavigate();
   const toast = useToast();
 
+  const [savedAddresses, setSavedAddresses] = useState([]);
   const [formData, setFormData] = useState({
-    firstName: 'Alexander',
-    lastName: 'Wright',
-    email: 'alex.wright@example.com',
-    phone: '+1 (555) 234-8901',
+    firstName: customer?.firstName || '',
+    lastName: customer?.lastName || '',
+    email: customer?.email || '',
+    phone: customer?.phone || '',
     country: 'United States',
-    address: '742 Evergreen Terrace',
-    city: 'Portland',
-    state: 'OR',
-    postalCode: '97201',
+    address: '',
+    city: '',
+    state: '',
+    postalCode: '',
     sameBillingAsShipping: true,
     billingAddress: '',
     paymentMethod: 'card',
   });
+
+  useEffect(() => {
+    if (customer) {
+      customerService.getAddresses().then((addrs) => {
+        setSavedAddresses(addrs || []);
+        const defaultAddr = (addrs || []).find((a) => a.isDefault) || addrs?.[0];
+        setFormData((prev) => ({
+          ...prev,
+          firstName: prev.firstName || defaultAddr?.firstName || customer.firstName || '',
+          lastName: prev.lastName || defaultAddr?.lastName || customer.lastName || '',
+          email: prev.email || customer.email || '',
+          phone: prev.phone || defaultAddr?.phone || customer.phone || '',
+          address: prev.address || defaultAddr?.address || '',
+          city: prev.city || defaultAddr?.city || '',
+          state: prev.state || defaultAddr?.state || '',
+          postalCode: prev.postalCode || defaultAddr?.postalCode || '',
+          country: prev.country || defaultAddr?.country || 'United States',
+        }));
+      }).catch(console.error);
+    }
+  }, [customer]);
 
   const [formErrors, setFormErrors] = useState({});
   const [isProcessing, setIsProcessing] = useState(false);
@@ -63,36 +88,48 @@ export const CheckoutPage = () => {
 
     setIsProcessing(true);
     try {
-      // 1. Simulate gateway processing (UI phase only, no real money or card storage)
-      await paymentService.simulatePaymentProcessing({
-        method: formData.paymentMethod,
-        amount: total,
-      });
-
-      // 2. Create order record
+      // 1. Create order record atomically via database RPC
       const order = await orderService.createOrder({
         customer: {
-          name: `${formData.firstName} ${formData.lastName}`,
-          email: formData.email,
-          phone: formData.phone,
+          name: `${formData.firstName} ${formData.lastName}`.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone.trim(),
         },
         shippingAddress: {
-          address: formData.address,
-          city: formData.city,
-          state: formData.state,
-          postalCode: formData.postalCode,
-          country: formData.country,
+          address: formData.address.trim(),
+          city: formData.city.trim(),
+          state: formData.state.trim(),
+          postalCode: formData.postalCode.trim(),
+          country: formData.country.trim(),
         },
         items: [...items],
-        subtotal,
-        discount,
-        shippingFee,
-        total,
+        paymentMethod: formData.paymentMethod,
+        couponCode: appliedCoupon?.code || null,
+        currency,
       });
 
+      const orderRef = order.orderNumber || order.id;
+
+      // 2. Initiate payment session on backend (never passing amounts from client)
+      let paymentSession = null;
+      try {
+        paymentSession = await paymentService.createPayment(
+          orderRef,
+          formData.paymentMethod === 'card' ? 'sandbox' : 'manual'
+        );
+      } catch (pErr) {
+        console.warn('Backend payment session notice:', pErr.message);
+      }
+
       clearCart();
-      toast.success('Order placed successfully!');
-      navigate(`/checkout/success?orderId=${order.id}`);
+      toast.success(`Order ${orderRef} placed successfully!`);
+
+      if (formData.paymentMethod === 'card') {
+        const dest = paymentSession?.redirectUrl || `/sandbox-payment?order=${encodeURIComponent(orderRef)}&amount=${encodeURIComponent(total)}&currency=${encodeURIComponent(currency)}`;
+        window.location.href = dest;
+      } else {
+        navigate(`/checkout/success?orderId=${orderRef}&email=${encodeURIComponent(formData.email)}`);
+      }
     } catch (err) {
       toast.error(err.message || 'Order completion failed');
     } finally {
@@ -184,6 +221,41 @@ export const CheckoutPage = () => {
             <h3 className="text-sm font-bold uppercase tracking-wider text-[#171717] pb-3 border-b border-stone-100">
               2. Shipping Address
             </h3>
+
+            {savedAddresses.length > 0 && (
+              <div className="p-3 bg-stone-50 rounded-xs border border-stone-200 mb-2">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#6B665F] mb-1">
+                  Deliver to Saved Address
+                </label>
+                <select
+                  onChange={(e) => {
+                    const sel = savedAddresses.find((a) => a.id === e.target.value);
+                    if (sel) {
+                      setFormData((prev) => ({
+                        ...prev,
+                        firstName: sel.firstName || prev.firstName,
+                        lastName: sel.lastName || prev.lastName,
+                        phone: sel.phone || prev.phone,
+                        address: sel.address || '',
+                        city: sel.city || '',
+                        state: sel.state || '',
+                        postalCode: sel.postalCode || '',
+                        country: sel.country || 'United States',
+                      }));
+                    }
+                  }}
+                  className="w-full text-xs p-2 bg-white border border-[#DDD8D0] rounded-xs text-[#1C1C1C]"
+                >
+                  <option value="">Choose an existing address...</option>
+                  {savedAddresses.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.address}, {a.city}, {a.country} {a.isDefault ? '(Default)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div>
               <label className="block text-xs uppercase tracking-wider font-semibold text-[#1C1C1C] mb-1.5">
                 Country / Destination
@@ -275,7 +347,7 @@ export const CheckoutPage = () => {
                 <CreditCard className="w-5 h-5 text-[#A66A3F]" />
                 <div className="flex-1 text-xs">
                   <span className="font-bold text-[#171717] block">Credit / Debit Card (Simulated)</span>
-                  <span className="text-[#6B665F]">Instant verification via secure mock processing</span>
+                  <span className="text-[#6B665F]">Instant verification via sandbox gateway</span>
                 </div>
               </label>
 

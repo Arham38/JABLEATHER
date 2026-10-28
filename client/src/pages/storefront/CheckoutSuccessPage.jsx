@@ -1,29 +1,46 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { CheckCircle2, Package, Truck, ArrowRight, Home } from 'lucide-react';
+import { CheckCircle2, Truck, ArrowRight } from 'lucide-react';
 import { orderService } from '../../services/orderService';
 import { formatCurrency } from '../../utils/currency';
 import Button from '../../components/common/Button';
 
 export const CheckoutSuccessPage = () => {
   const [searchParams] = useSearchParams();
-  const orderId = searchParams.get('orderId') || 'ORD-89421';
+  const orderId = searchParams.get('orderId');
+  const email = searchParams.get('email');
   const [order, setOrder] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchOrder = async () => {
+      if (!orderId) {
+        setIsLoading(false);
+        return;
+      }
       try {
-        const found = await orderService.getOrderById(orderId);
+        const found = await orderService.getOrderById(orderId, email);
         setOrder(found);
       } catch (err) {
-        console.warn('Order not found in state, using demo order:', err);
+        console.warn('Could not load order receipt:', err);
       } finally {
         setIsLoading(false);
       }
     };
     fetchOrder();
-  }, [orderId]);
+  }, [orderId, email]);
+
+  if (!isLoading && !order && !orderId) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-20 text-center space-y-4">
+        <h1 className="text-2xl font-bold text-[#171717]">No Order Found</h1>
+        <p className="text-xs text-[#6B665F]">We couldn't locate an active checkout session or order ID.</p>
+        <Link to="/shop" className="inline-block">
+          <Button variant="primary" size="md">Return to Atelier Shop</Button>
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -47,20 +64,74 @@ export const CheckoutSuccessPage = () => {
         {/* Order Details Body */}
         <div className="p-6 sm:p-10 space-y-8">
           {/* Order ID & Tracking Reference */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-[#F7F5F0] rounded-xs border border-[#DDD8D0] text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 p-4 bg-[#F7F5F0] rounded-xs border border-[#DDD8D0] text-xs">
             <div>
               <span className="text-[#6B665F] block font-medium">Order Number</span>
-              <strong className="text-sm font-bold text-[#171717]">{order?.id || orderId}</strong>
+              <strong className="text-sm font-bold text-[#171717]">{order?.orderNumber || order?.id || orderId}</strong>
             </div>
             <div>
               <span className="text-[#6B665F] block font-medium">Order Status</span>
-              <strong className="text-sm font-bold text-emerald-700">Confirmed (Processing)</strong>
+              <strong className="text-sm font-bold text-amber-700 capitalize">
+                {order?.orderStatus || 'Pending'}
+              </strong>
+            </div>
+            <div>
+              <span className="text-[#6B665F] block font-medium">Payment Status</span>
+              <strong className={`text-sm font-bold capitalize ${
+                order?.paymentStatus === 'paid'
+                  ? 'text-emerald-700'
+                  : order?.paymentStatus === 'failed'
+                  ? 'text-red-700'
+                  : order?.paymentStatus === 'amount_mismatch'
+                  ? 'text-red-600'
+                  : 'text-amber-700'
+              }`}>
+                {order?.paymentStatus === 'paid'
+                  ? 'Paid & Verified'
+                  : order?.paymentStatus === 'failed'
+                  ? 'Payment Declined / Failed'
+                  : order?.paymentStatus === 'amount_mismatch'
+                  ? 'Under Review (Amount Mismatch)'
+                  : order?.paymentMethod === 'wire'
+                  ? 'Awaiting Bank Wire'
+                  : 'Awaiting Payment Settlement'}
+              </strong>
             </div>
             <div>
               <span className="text-[#6B665F] block font-medium">Tracking Status</span>
-              <strong className="text-sm font-bold text-[#171717]">Assigned Upon Dispatch</strong>
+              <strong className="text-sm font-bold text-[#171717]">
+                {order?.trackingNumber || 'Assigned Upon Dispatch'}
+              </strong>
             </div>
           </div>
+
+          {/* Wire Transfer / COD Instructions Callout */}
+          {(order?.paymentMethod === 'wire' || order?.paymentMethod === 'cod') && (
+            <div className="p-4 bg-amber-50 rounded-xs border border-amber-200 text-xs space-y-2 text-amber-950">
+              <strong className="block font-bold uppercase tracking-wider text-amber-900">
+                {order.paymentMethod === 'wire' ? 'Bank Wire Transfer Settlement' : 'Cash on Delivery (COD)'}
+              </strong>
+              {order.paymentMethod === 'wire' ? (
+                <>
+                  <p className="text-amber-800">
+                    Your order has been recorded. Please wire the invoice amount referencing your order number:
+                  </p>
+                  <div className="p-3 bg-white/80 rounded border border-amber-200 font-mono text-[11px] space-y-0.5">
+                    <p><strong>Bank:</strong> Standard Chartered Pakistan</p>
+                    <p><strong>Account:</strong> JAB LEATHER (PVT) LTD</p>
+                    <p><strong>IBAN:</strong> PK36SCBL0000001123456701</p>
+                    <p><strong>SWIFT:</strong> SCBLPKKA</p>
+                    <p><strong>Reference:</strong> {order.orderNumber || order.id || orderId}</p>
+                  </div>
+                  <p className="text-[11px] text-amber-800">Dispatch will initiate immediately upon wire verification by our Treasury.</p>
+                </>
+              ) : (
+                <p className="text-amber-800">
+                  Payment of {formatCurrency(order?.total, order?.currency)} is due upon courier delivery. Please have the exact amount ready upon courier dispatch.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Purchased Items List */}
           {order?.items && order.items.length > 0 && (
@@ -81,15 +152,15 @@ export const CheckoutSuccessPage = () => {
                       </div>
                     </div>
                     <span className="font-bold text-[#171717]">
-                      {formatCurrency(item.price * item.quantity, item.currency)}
+                      {formatCurrency(item.price * item.quantity, order.currency || item.currency)}
                     </span>
                   </div>
                 ))}
               </div>
 
               <div className="pt-4 flex justify-between text-sm font-extrabold text-[#171717]">
-                <span>Total Paid</span>
-                <span>{formatCurrency(order.total, order.items?.[0]?.currency)}</span>
+                <span>{order.paymentStatus === 'paid' ? 'Total Paid' : 'Total Amount'}</span>
+                <span>{formatCurrency(order.total, order.currency || order.items?.[0]?.currency)}</span>
               </div>
             </div>
           )}

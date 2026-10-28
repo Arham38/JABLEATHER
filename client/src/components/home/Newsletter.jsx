@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Mail, CheckCircle2 } from 'lucide-react';
+import { messagingService } from '../../services/messagingService';
 import { isValidEmail } from '../../utils/validation';
 import { useToast } from '../../context/ToastContext';
 import Button from '../common/Button';
 
 export const Newsletter = () => {
   const [email, setEmail] = useState('');
+  const [honeypot, setHoneypot] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const toast = useToast();
@@ -18,12 +20,15 @@ export const Newsletter = () => {
     }
 
     setIsSubmitting(true);
-    // Simulate newsletter subscription
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      await messagingService.subscribeNewsletter(email, 'homepage', honeypot);
       setIsSubscribed(true);
       toast.success('Thank you for subscribing to JAB Leather updates!');
-    }, 400);
+    } catch (err) {
+      toast.error(err.message || 'Subscription failed. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -49,6 +54,15 @@ export const Newsletter = () => {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
+              <input
+                type="text"
+                name="b_confirm_email"
+                value={honeypot}
+                onChange={(e) => setHoneypot(e.target.value)}
+                style={{ display: 'none' }}
+                tabIndex={-1}
+                autoComplete="off"
+              />
               <input
                 type="email"
                 placeholder="Enter your email address"

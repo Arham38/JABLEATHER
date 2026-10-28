@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Sliders, ExternalLink, Sparkles } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import { collectionService } from '../../services/collectionService';
 
 export const AdminCollectionsPage = () => {

@@ -16,6 +16,7 @@ export const SignUpPage = () => {
     confirmPassword: '',
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [isVerificationSent, setIsVerificationSent] = useState(false);
   const { signupCustomer } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
@@ -33,8 +34,12 @@ export const SignUpPage = () => {
 
     setIsLoading(true);
     try {
-      await signupCustomer(formData);
-      navigate('/account');
+      const res = await signupCustomer(formData);
+      if (res?.needsEmailVerification) {
+        setIsVerificationSent(true);
+      } else {
+        navigate('/account');
+      }
     } catch {
       // Handled in authContext
     } finally {
@@ -57,7 +62,20 @@ export const SignUpPage = () => {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {isVerificationSent ? (
+          <div className="p-6 bg-amber-50/60 border border-amber-200/80 rounded-xs text-center space-y-4">
+            <h3 className="text-sm font-bold text-[#171717]">Verify Your Email</h3>
+            <p className="text-xs text-[#6B665F] leading-relaxed">
+              We sent a confirmation link to <strong>{formData.email}</strong>. Please check your inbox and confirm your address before logging in.
+            </p>
+            <Link to="/account/login">
+              <Button variant="primary" size="sm" className="w-full">
+                Proceed to Sign In
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <Input
               label="First Name"
@@ -110,6 +128,7 @@ export const SignUpPage = () => {
             <ArrowRight className="w-4 h-4" />
           </Button>
         </form>
+        )}
 
         <div className="mt-6 pt-6 border-t border-stone-100 text-center text-xs text-[#6B665F]">
           <p>

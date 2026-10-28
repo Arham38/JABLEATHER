@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Save, Check } from 'lucide-react';
+import { Save } from 'lucide-react';
 import { settingsService } from '../../services/settingsService';
 import { useToast } from '../../context/ToastContext';
 
@@ -23,7 +23,7 @@ export const AdminSettingsPage = () => {
       await settingsService.updateSettings(settings);
       toast.success('Store configurations saved');
     } catch (err) {
-      toast.error('Failed to update settings');
+      toast.error(err.message || 'Failed to update settings');
     } finally {
       setSaving(false);
     }

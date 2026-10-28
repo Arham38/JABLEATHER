@@ -1,5 +1,6 @@
 import supabase from '../utils/supabase';
 import { categoryService } from './categoryService';
+import { BASELINE_PRODUCTS } from '../data/baselineCatalog';
 
 const PRODUCT_COLUMNS = [
   'id', 'legacy_id', 'name', 'slug', 'short_description', 'description',
@@ -76,20 +77,47 @@ const mapProduct = (row, categoriesById) => {
   };
 };
 
+let cachedProducts = null;
+let lastProductsFetch = 0;
+const CACHE_TTL_MS = 60000;
+
 const fetchActiveProducts = async () => {
-  const [{ data, error }, categories] = await Promise.all([
-    supabase
-      .from('products')
-      .select(PRODUCT_COLUMNS)
-      .eq('status', 'active')
-      .order('created_at', { ascending: false }),
-    categoryService.getCategories(),
-  ]);
+  if (cachedProducts && Date.now() - lastProductsFetch < CACHE_TTL_MS) {
+    return cachedProducts;
+  }
+  try {
+    const [{ data, error }, categories] = await Promise.all([
+      supabase
+        .from('products')
+        .select(PRODUCT_COLUMNS)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false }),
+      categoryService.getCategories(),
+    ]);
 
-  if (error) throw new Error(`Could not load products: ${error.message}`);
+    if (error) {
+      console.warn('Supabase products fetch notice:', error.message);
+      cachedProducts = BASELINE_PRODUCTS;
+      lastProductsFetch = Date.now();
+      return BASELINE_PRODUCTS;
+    }
 
-  const categoriesById = new Map(categories.map((category) => [category.id, category]));
-  return (data || []).map((row) => mapProduct(row, categoriesById));
+    if (data && data.length > 0) {
+      const categoriesById = new Map(categories.map((category) => [category.id, category]));
+      cachedProducts = data.map((row) => mapProduct(row, categoriesById));
+      lastProductsFetch = Date.now();
+      return cachedProducts;
+    }
+
+    cachedProducts = BASELINE_PRODUCTS;
+    lastProductsFetch = Date.now();
+    return BASELINE_PRODUCTS;
+  } catch (err) {
+    console.warn('Using baseline products fallback:', err.message);
+    cachedProducts = BASELINE_PRODUCTS;
+    lastProductsFetch = Date.now();
+    return BASELINE_PRODUCTS;
+  }
 };
 
 /**

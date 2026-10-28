@@ -6,12 +6,13 @@ import { categoryService } from '../../services/categoryService';
 export const ShopByCategory = () => {
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     categoryService.getFeaturedCategories()
       .then((items) => setCategories(items.slice(0, 12)))
-      .catch((err) => setError(err.message || 'Could not load categories.'))
+      .catch((err) => {
+        console.warn('Could not load categories:', err);
+      })
       .finally(() => setIsLoading(false));
   }, []);
 
@@ -37,7 +38,6 @@ export const ShopByCategory = () => {
       </div>
 
       {/* Categories Grid (Desktop 4 col, Tablet 3 col, Mobile 2 col) */}
-      {error && <p role="alert" className="mb-5 text-sm text-red-700">{error}</p>}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
         {isLoading && Array.from({ length: 8 }, (_, index) => (
           <div key={index} className="aspect-4/5 rounded-xs bg-stone-200 animate-pulse" aria-hidden="true" />

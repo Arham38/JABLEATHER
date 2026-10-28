@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Truck, Package, CheckCircle2, Clock } from 'lucide-react';
+import { ArrowLeft, Truck } from 'lucide-react';
 import { customerService } from '../../services/customerService';
 import { formatCurrency } from '../../utils/currency';
 import Badge from '../../components/common/Badge';
-import Button from '../../components/common/Button';
 
 export const OrderDetailPage = () => {
   const { id } = useParams();
@@ -45,8 +44,8 @@ export const OrderDetailPage = () => {
             </p>
           </div>
         </div>
-        <Badge variant={order.orderStatus === 'Shipped' ? 'success' : 'bestseller'}>
-          {order.orderStatus}
+        <Badge variant={order.orderStatus?.toLowerCase() === 'shipped' || order.orderStatus?.toLowerCase() === 'delivered' ? 'success' : 'bestseller'}>
+          {order.orderStatus ? order.orderStatus.charAt(0).toUpperCase() + order.orderStatus.slice(1) : 'Pending'}
         </Badge>
       </div>
 
@@ -61,7 +60,9 @@ export const OrderDetailPage = () => {
             </strong>
           </span>
         </div>
-        <span className="text-emerald-700 font-bold">{order.paymentStatus}</span>
+        <span className={`font-bold capitalize ${order.paymentStatus === 'paid' ? 'text-emerald-700' : 'text-amber-700'}`}>
+          Payment: {order.paymentStatus || 'Unpaid'}
+        </span>
       </div>
 
       {/* Items Breakdown */}
@@ -83,8 +84,8 @@ export const OrderDetailPage = () => {
                 </div>
               </div>
               <div className="text-right">
-                <p className="font-bold text-[#171717]">{formatCurrency(item.price * item.quantity)}</p>
-                <p className="text-[#6B665F]">{formatCurrency(item.price)} × {item.quantity}</p>
+                <p className="font-bold text-[#171717]">{formatCurrency(item.price * item.quantity, order.currency)}</p>
+                <p className="text-[#6B665F]">{formatCurrency(item.price, order.currency)} × {item.quantity}</p>
               </div>
             </div>
           ))}
@@ -105,21 +106,21 @@ export const OrderDetailPage = () => {
           <h4 className="font-bold text-[#171717] mb-2">Payment Summary</h4>
           <div className="flex justify-between text-stone-600">
             <span>Subtotal</span>
-            <span>{formatCurrency(order.subtotal)}</span>
+            <span>{formatCurrency(order.subtotal, order.currency)}</span>
           </div>
           {order.discount > 0 && (
             <div className="flex justify-between text-emerald-700">
               <span>Coupon Discount</span>
-              <span>-{formatCurrency(order.discount)}</span>
+              <span>-{formatCurrency(order.discount, order.currency)}</span>
             </div>
           )}
           <div className="flex justify-between text-stone-600">
             <span>Express Courier</span>
-            <span>{order.shippingFee === 0 ? 'Complimentary' : formatCurrency(order.shippingFee)}</span>
+            <span>{order.shippingFee === 0 ? 'Complimentary' : formatCurrency(order.shippingFee, order.currency)}</span>
           </div>
           <div className="flex justify-between text-sm font-extrabold text-[#171717] pt-2 border-t border-stone-200">
-            <span>Total Paid</span>
-            <span>{formatCurrency(order.total)}</span>
+            <span>{order.paymentStatus === 'paid' ? 'Total Paid' : 'Total Amount'}</span>
+            <span>{formatCurrency(order.total, order.currency)}</span>
           </div>
         </div>
       </div>
