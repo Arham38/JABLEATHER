@@ -1,4 +1,6 @@
+const path = require('path');
 const dotenv = require('dotenv');
+dotenv.config({ path: path.resolve(__dirname, '.env') });
 dotenv.config();
 
 const express = require('express');
@@ -63,10 +65,33 @@ app.use(
   })
 );
 
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({
+  limit: '2mb',
+  verify: (req, _res, buf) => {
+    req.rawBody = buf;
+  },
+}));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 app.locals.supabase = supabase;
+
+// Dedicated strict rate-limiter for payment endpoints (30 requests per 10 minutes)
+const paymentLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    status: 'error',
+    message: 'Too many payment requests from this IP, please try again in a few minutes.',
+  },
+});
+app.use('/api/payments', paymentLimiter);
+
+// Payment Routes
+const paymentRoutes = require('./payments/paymentRoutes');
+app.use('/api/payments', paymentRoutes);
+app.use('/api', paymentRoutes); // Supports /api/orders/:order_number/status
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
