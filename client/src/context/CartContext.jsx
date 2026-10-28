@@ -4,14 +4,18 @@ import { couponService } from '../services/couponService';
 import { shippingService } from '../services/shippingService';
 import { useCurrency } from './CurrencyContext';
 import { useToast } from './ToastContext';
+import { AuthContext } from './AuthContext';
 
 const CartContext = createContext(null);
 
 export const CartProvider = ({ children }) => {
-  const [items, setItems] = useState(() => {
-    const saved = cartService.getCart();
-    return Array.isArray(saved) ? saved : [];
-  });
+  const auth = useContext(AuthContext);
+  const customer = auth?.customer;
+  const customerId = customer?.id;
+  const isAuthenticated = !!customer;
+
+  // Items are strictly empty unless customer is authenticated
+  const [items, setItems] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [isCouponLoading, setIsCouponLoading] = useState(false);
@@ -44,11 +48,13 @@ export const CartProvider = ({ children }) => {
     }
   }, [toast]);
 
-  // Initial load: read saved cart and re-validate against catalog
+  // Load customer-scoped cart whenever authentication state changes
   useEffect(() => {
-    const saved = cartService.getCart();
+    if (!customerId) return;
+
+    let isMounted = true;
+    const saved = cartService.getCart(customerId);
     if (saved && Array.isArray(saved) && saved.length > 0) {
-      let isMounted = true;
       cartService.revalidateCart(saved).then(({ hydratedItems, notices }) => {
         if (!isMounted) return;
         setItems(hydratedItems);
@@ -62,18 +68,36 @@ export const CartProvider = ({ children }) => {
           }
         }
       }).catch((err) => {
-        console.warn('Cart initialization skipped:', err);
+        console.warn('Customer cart initialization notice:', err);
       });
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [customerId, toast]);
+
+  // Clear cart upon user signout
+  useEffect(() => {
+    const handleAuthLogout = () => {
+      setItems([]);
+      setAppliedCoupon(null);
+      cartService.clearCart(customerId);
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('jab:auth:logout', handleAuthLogout);
       return () => {
-        isMounted = false;
+        window.removeEventListener('jab:auth:logout', handleAuthLogout);
       };
     }
-  }, [toast]);
+  }, [customerId]);
 
-  // Save to storage on update
+  // Save to customer-scoped storage on update
   useEffect(() => {
-    cartService.saveCart(items);
-  }, [items]);
+    if (customerId) {
+      cartService.saveCart(items, customerId);
+    }
+  }, [items, customerId]);
 
   const itemCount = useMemo(() => {
     return items.reduce((sum, item) => sum + item.quantity, 0);
@@ -110,6 +134,11 @@ export const CartProvider = ({ children }) => {
 
   // Immutable addToCart: new object for changed items, strictly capped by stockCount
   const addToCart = useCallback((product, { size = null, color = null, quantity = 1 } = {}) => {
+    if (!customerId) {
+      toast.warning('Please sign in to your account to add items to your shopping bag.');
+      return false;
+    }
+
     const selectedSize = size || (product.sizes && product.sizes[0]) || 'Standard';
     const selectedColor =
       typeof color === 'string'
@@ -177,7 +206,8 @@ export const CartProvider = ({ children }) => {
     }
 
     setIsCartOpen(true);
-  }, [items, toast]);
+    return true;
+  }, [items, customerId, toast]);
 
   const removeFromCart = useCallback((cartItemId) => {
     const target = items.find((i) => i.cartItemId === cartItemId);
@@ -217,8 +247,8 @@ export const CartProvider = ({ children }) => {
   const clearCart = useCallback(() => {
     setItems([]);
     setAppliedCoupon(null);
-    cartService.clearCart();
-  }, []);
+    cartService.clearCart(customerId);
+  }, [customerId]);
 
   const openCart = useCallback(() => {
     setIsCartOpen(true);
@@ -285,6 +315,7 @@ export const CartProvider = ({ children }) => {
     applyCoupon,
     removeCoupon,
     revalidateCart: () => revalidate(items),
+    isAuthenticated,
   }), [
     items,
     itemCount,
@@ -309,6 +340,7 @@ export const CartProvider = ({ children }) => {
     applyCoupon,
     removeCoupon,
     revalidate,
+    isAuthenticated,
   ]);
 
   return (

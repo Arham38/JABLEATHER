@@ -17,6 +17,7 @@ import {
 import { productService } from '../../services/productService';
 import { reviewService } from '../../services/reviewService';
 import { useCart } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
 import { useWishlist } from '../../context/WishlistContext';
 import { useToast } from '../../context/ToastContext';
 import { formatCurrency, calculateDiscountPercentage } from '../../utils/currency';
@@ -29,6 +30,7 @@ export const ProductDetailPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const { addToCart } = useCart();
+  const { isAuthenticated } = useAuth();
   const { isInWishlist, toggleWishlist } = useWishlist();
   const toast = useToast();
 
@@ -120,6 +122,11 @@ export const ProductDetailPage = () => {
   const isWishlisted = isInWishlist(product.id);
 
   const handleAddToCart = () => {
+    if (!isAuthenticated) {
+      toast.warning('Please sign in to your account to add items to your shopping bag.');
+      navigate('/account/login');
+      return;
+    }
     addToCart(product, {
       size: selectedSize,
       color: selectedColor,
@@ -128,6 +135,11 @@ export const ProductDetailPage = () => {
   };
 
   const handleBuyNow = () => {
+    if (!isAuthenticated) {
+      toast.warning('Please sign in to your account to proceed with checkout.');
+      navigate('/account/login');
+      return;
+    }
     addToCart(product, {
       size: selectedSize,
       color: selectedColor,

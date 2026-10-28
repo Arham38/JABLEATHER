@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, Tag, Truck } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
 import { formatCurrency } from '../../utils/currency';
 import Drawer from '../common/Drawer';
 import Button from '../common/Button';
@@ -24,11 +25,13 @@ export const CartDrawer = () => {
     removeCoupon,
     updateQuantity,
     removeFromCart,
+    clearCart,
   } = useCart();
   const currency = items[0]?.currency || 'USD';
 
   const [couponInput, setCouponInput] = useState('');
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
 
   const handleApplyCoupon = async (e) => {
     e.preventDefault();
@@ -77,8 +80,45 @@ export const CartDrawer = () => {
         </div>
 
         {/* Items List */}
+        {items.length > 0 && (
+          <div className="flex items-center justify-between px-6 py-2 bg-stone-100/70 border-b border-stone-200 text-xs">
+            <span className="text-[11px] font-semibold text-stone-500 uppercase tracking-wider">
+              {itemCount} {itemCount === 1 ? 'item' : 'items'}
+            </span>
+            <button
+              type="button"
+              onClick={clearCart}
+              className="text-[11px] font-semibold text-stone-500 hover:text-red-700 transition inline-flex items-center gap-1 cursor-pointer"
+            >
+              <Trash2 className="w-3 h-3" />
+              <span>Empty Bag</span>
+            </button>
+          </div>
+        )}
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-          {items.length === 0 ? (
+          {!isAuthenticated ? (
+            <div className="h-full flex flex-col items-center justify-center text-center py-16 px-4 space-y-4">
+              <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center text-[#A66A3F]">
+                <ShoppingBag className="w-8 h-8" />
+              </div>
+              <div>
+                <h4 className="text-base font-bold text-[#171717]">Sign In Required</h4>
+                <p className="text-xs text-[#6B665F] mt-1.5 max-w-[240px]">
+                  Please sign in to your JAB Leather account to view and manage your shopping bag.
+                </p>
+              </div>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  closeCart();
+                  navigate('/account/login');
+                }}
+              >
+                Sign In to Your Account
+              </Button>
+            </div>
+          ) : items.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center py-16 space-y-4">
               <div className="w-16 h-16 rounded-full bg-stone-100 flex items-center justify-center text-stone-400">
                 <ShoppingBag className="w-8 h-8" />

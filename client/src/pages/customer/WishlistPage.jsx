@@ -3,14 +3,22 @@ import { Link } from 'react-router-dom';
 import { Heart, Trash2, ShoppingBag } from 'lucide-react';
 import { useWishlist } from '../../context/WishlistContext';
 import { useCart } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { formatCurrency } from '../../utils/currency';
 import Button from '../../components/common/Button';
 
 export const WishlistPage = () => {
   const { wishlistItems, removeFromWishlist, clearWishlist } = useWishlist();
   const { addToCart } = useCart();
+  const { isAuthenticated } = useAuth();
+  const toast = useToast();
 
   const handleMoveToCart = (product) => {
+    if (!isAuthenticated) {
+      toast.warning('Please sign in to move items to your bag.');
+      return;
+    }
     addToCart(product, {
       size: product.sizes?.[0] || 'Standard',
       color: product.colors?.[0] || null,
