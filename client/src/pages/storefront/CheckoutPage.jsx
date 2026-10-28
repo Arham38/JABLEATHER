@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Lock, CreditCard, ShieldCheck, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Lock, CreditCard, ArrowRight } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
 import { orderService } from '../../services/orderService';
 import { paymentService } from '../../services/paymentService';
 import { useToast } from '../../context/ToastContext';
@@ -12,16 +13,17 @@ import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 
 export const CheckoutPage = () => {
-  const { items, subtotal, discount, shippingFee, total, clearCart } = useCart();
+  const { items, subtotal, discount, shippingFee, total, clearCart, appliedCoupon } = useCart();
+  const { customer } = useAuth();
   const currency = items[0]?.currency || 'USD';
   const navigate = useNavigate();
   const toast = useToast();
 
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
+    firstName: customer?.firstName || '',
+    lastName: customer?.lastName || '',
+    email: customer?.email || '',
+    phone: customer?.phone || '',
     country: 'United States',
     address: '',
     city: '',
@@ -31,6 +33,18 @@ export const CheckoutPage = () => {
     billingAddress: '',
     paymentMethod: 'card',
   });
+
+  useEffect(() => {
+    if (customer) {
+      setFormData((prev) => ({
+        ...prev,
+        firstName: prev.firstName || customer.firstName || '',
+        lastName: prev.lastName || customer.lastName || '',
+        email: prev.email || customer.email || '',
+        phone: prev.phone || customer.phone || '',
+      }));
+    }
+  }, [customer]);
 
   const [formErrors, setFormErrors] = useState({});
   const [isProcessing, setIsProcessing] = useState(false);
@@ -63,36 +77,36 @@ export const CheckoutPage = () => {
 
     setIsProcessing(true);
     try {
-      // 1. Simulate gateway processing (UI phase only, no real money or card storage)
+      // 1. Simulate gateway processing (UI sandbox mode)
       await paymentService.simulatePaymentProcessing({
         method: formData.paymentMethod,
         amount: total,
       });
 
-      // 2. Create order record
+      // 2. Create order record atomically via database RPC
       const order = await orderService.createOrder({
         customer: {
-          name: `${formData.firstName} ${formData.lastName}`,
-          email: formData.email,
-          phone: formData.phone,
+          name: `${formData.firstName} ${formData.lastName}`.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone.trim(),
         },
         shippingAddress: {
-          address: formData.address,
-          city: formData.city,
-          state: formData.state,
-          postalCode: formData.postalCode,
-          country: formData.country,
+          address: formData.address.trim(),
+          city: formData.city.trim(),
+          state: formData.state.trim(),
+          postalCode: formData.postalCode.trim(),
+          country: formData.country.trim(),
         },
         items: [...items],
-        subtotal,
-        discount,
-        shippingFee,
-        total,
+        paymentMethod: formData.paymentMethod,
+        couponCode: appliedCoupon?.code || null,
+        currency,
       });
 
       clearCart();
-      toast.success('Order placed successfully!');
-      navigate(`/checkout/success?orderId=${order.id}`);
+      const orderRef = order.orderNumber || order.id;
+      toast.success(`Order ${orderRef} placed successfully!`);
+      navigate(`/checkout/success?orderId=${orderRef}&email=${encodeURIComponent(formData.email)}`);
     } catch (err) {
       toast.error(err.message || 'Order completion failed');
     } finally {

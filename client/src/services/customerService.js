@@ -1,4 +1,5 @@
 import supabase from '../utils/supabase';
+import { orderService } from './orderService';
 
 const mapAddress = (row) => ({
   id: row.id,
@@ -188,55 +189,12 @@ export const customerService = {
 
   // Customer order history from Supabase orders table
   getCustomerOrders: async () => {
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) return [];
-
-    const { data, error } = await supabase
-      .from('orders')
-      .select('id,order_number,customer,shipping_address,items,subtotal,shipping,tax,total,currency,payment_method,payment_status,order_status,created_at')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.warn('Could not query customer orders:', error.message);
-      return [];
-    }
-
-    return (data || []).map((row) => ({
-      ...row,
-      id: row.order_number,
-      databaseId: row.id,
-      date: row.created_at,
-      shippingFee: Number(row.shipping) || 0,
-      total: Number(row.total) || 0,
-      subtotal: Number(row.subtotal) || 0,
-    }));
+    return orderService.getAllOrders();
   },
 
   // Get single order for customer
   getOrderById: async (orderNumber) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    let query = supabase
-      .from('orders')
-      .select('*')
-      .eq('order_number', orderNumber);
-
-    if (user) {
-      query = query.eq('user_id', user.id);
-    }
-
-    const { data, error } = await query.single();
-    if (error || !data) throw new Error(`Order #${orderNumber} not found.`);
-
-    return {
-      ...data,
-      id: data.order_number,
-      databaseId: data.id,
-      date: data.created_at,
-      shippingFee: Number(data.shipping) || 0,
-      total: Number(data.total) || 0,
-      subtotal: Number(data.subtotal) || 0,
-    };
+    return orderService.getOrderById(orderNumber);
   },
 };
 

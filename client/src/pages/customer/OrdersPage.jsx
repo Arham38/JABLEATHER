@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, Truck, ExternalLink } from 'lucide-react';
+import { Package, Truck } from 'lucide-react';
 import { customerService } from '../../services/customerService';
 import { formatCurrency } from '../../utils/currency';
 import Badge from '../../components/common/Badge';
@@ -56,8 +56,8 @@ export const OrdersPage = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Badge variant={order.orderStatus === 'Shipped' ? 'success' : 'bestseller'}>
-                    {order.orderStatus}
+                  <Badge variant={order.orderStatus?.toLowerCase() === 'shipped' || order.orderStatus?.toLowerCase() === 'delivered' ? 'success' : 'bestseller'}>
+                    {order.orderStatus ? order.orderStatus.charAt(0).toUpperCase() + order.orderStatus.slice(1) : 'Pending'}
                   </Badge>
                   <Link
                     to={`/account/orders/${order.id}`}
@@ -88,7 +88,7 @@ export const OrdersPage = () => {
                       </div>
                     </div>
                     <span className="font-bold text-[#171717]">
-                      {formatCurrency(item.price * item.quantity)}
+                      {formatCurrency(item.price * item.quantity, order.currency || item.currency)}
                     </span>
                   </div>
                 ))}
@@ -106,10 +106,17 @@ export const OrdersPage = () => {
                   </span>
                 </div>
                 <div className="text-right">
-                  <span className="text-[#6B665F] mr-2">Total Paid:</span>
+                  <span className="text-[#6B665F] mr-2">
+                    {order.paymentStatus === 'paid' ? 'Total Paid:' : 'Total Amount:'}
+                  </span>
                   <strong className="text-sm font-extrabold text-[#171717]">
-                    {formatCurrency(order.total)}
+                    {formatCurrency(order.total, order.currency)}
                   </strong>
+                  {order.paymentStatus !== 'paid' && (
+                    <span className="ml-2 text-[10px] uppercase font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-xs border border-amber-200">
+                      {order.paymentStatus || 'unpaid'}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, MapPin, Heart, ArrowRight, Clock } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { customerService } from '../../services/customerService';
 import { useAuth } from '../../context/AuthContext';
 import { useWishlist } from '../../context/WishlistContext';
@@ -59,8 +59,8 @@ export const AccountDashboard = () => {
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <strong className="font-bold text-[#171717] text-sm">{order.id}</strong>
-                    <Badge variant={order.orderStatus === 'Shipped' ? 'success' : 'bestseller'}>
-                      {order.orderStatus}
+                    <Badge variant={order.orderStatus?.toLowerCase() === 'shipped' || order.orderStatus?.toLowerCase() === 'delivered' ? 'success' : 'bestseller'}>
+                      {order.orderStatus ? order.orderStatus.charAt(0).toUpperCase() + order.orderStatus.slice(1) : 'Pending'}
                     </Badge>
                   </div>
                   <p className="text-[#6B665F]">
