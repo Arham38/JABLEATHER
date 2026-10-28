@@ -1,7 +1,7 @@
 {
   "name": "jableather-fullstack",
   "version": "1.0.0",
-  "description": "JAB LEATHER - Luxury Fullstack E-Commerce Website (React + Tailwind + Express + MongoDB)",
+  "description": "JAB LEATHER - Luxury Fullstack E-Commerce Website (React 19 + Tailwind 4 + Express 5 + Supabase)",
   "scripts": {
     "dev:client": "cd client && npm run dev",
     "dev:server": "cd server && npm run dev",

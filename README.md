@@ -1,6 +1,6 @@
 # JAB LEATHER — Luxury Fullstack E-Commerce Platform
 
-> Handcrafted genuine leather jackets, outerwear, duffels, and bespoke accessories tailored in Sialkot, Pakistan. Engineered with modern fullstack architecture for international retail & wholesale export.
+> Handcrafted genuine leather jackets, outerwear, duffels, and bespoke accessories tailored in Sialkot, Pakistan. Engineered with a modern fullstack architecture for international retail & wholesale export.
 
 ---
 
@@ -8,86 +8,118 @@
 
 ```
 JABLEATHER/
-├── client/                     # React 19 + Tailwind CSS 4 + Vite Single Page Application
+├── client/                     # React 19 + Vite 8 + Tailwind CSS 4 Single Page Application
 │   ├── src/
-│   │   ├── api/                # Axios API client & centralized endpoints
-│   │   ├── assets/             # Logos, brand badges & media
+│   │   ├── api/                # Axios API client (strict VITE_API_URL in production)
+│   │   ├── assets/             # Brand logos, badges, and imagery
 │   │   ├── components/
-│   │   │   ├── admin/          # Admin operations layout & navigation
-│   │   │   ├── cart/           # Slide-over cart drawer & currency conversions
-│   │   │   ├── common/         # Button, Badge, Modal, Input, Pagination, etc.
-│   │   │   ├── home/           # Editorial banners, hero, workshop story, etc.
-│   │   │   ├── layout/         # Storefront header, mega menu, footer, announcements
-│   │   │   └── product/        # Product cards, responsive grids, quick-view modals
+│   │   │   ├── admin/          # Admin portal navigation and shell layout
+│   │   │   ├── cart/           # Slide-over cart drawer and calculations
+│   │   │   ├── common/         # Button, Input, Modal, Badge, Pagination, etc.
+│   │   │   ├── home/           # Editorial banners, hero, workshop story
+│   │   │   ├── layout/         # Storefront header, footer, announcement bar
+│   │   │   └── product/        # Product cards, filter drawer, responsive grids
 │   │   ├── context/            # Auth, Cart, Wishlist, UI, and Toast providers
-│   │   ├── data/               # Standalone mock datasets (products, orders, reviews)
+│   │   ├── data/               # Static fallback datasets (mock collections, reviews)
 │   │   ├── pages/
-│   │   │   ├── admin/          # 16 admin operations pages (Dashboard, CMS, Orders)
-│   │   │   ├── customer/       # Customer authentication & client portal pages
+│   │   │   ├── admin/          # 16 admin operations pages (Dashboard, CMS, Orders, Media)
+│   │   │   ├── customer/       # Customer portal pages (Dashboard, Orders, Addresses)
 │   │   │   └── storefront/     # Catalog, product details, checkout, about, contact
-│   │   ├── services/           # Services layer with mock fallback & backend sync
-│   │   ├── utils/              # Local storage, currency formatting, helpers
+│   │   ├── services/           # Service layer with Supabase integration
+│   │   ├── utils/              # Local storage, currency formatting, validation helpers
 │   │   ├── App.jsx             # Comprehensive routing & context tree
-│   │   ├── index.css           # Tailwind CSS 4 & luxury brand typography styling
 │   │   └── main.jsx
-├── server/                     # Node.js + Express + MongoDB REST API backend
-│   ├── .env                    # Environment variables (Port, Mongo URI, JWT secret)
-│   ├── server.js               # Express server entry point & health check
+│   ├── .env.example            # Client environment template
 │   └── package.json
-└── package.json                # Monorepo root automation scripts
+├── server/                     # Node.js + Express 5 Secure Backend Service
+│   ├── server.js               # Express 5 server with helmet, rate-limit & CORS controls
+│   ├── supabaseClient.js       # Centralized Supabase JS client with WebSocket polyfill
+│   ├── .env.example            # Server environment template
+│   └── package.json
+├── .gitignore                  # Root gitignore protecting all .env files and dependencies
+└── package.json                # Monorepo management scripts
 ```
+
+---
+
+## 🛠️ Tech Stack & Key Infrastructure
+
+* **Frontend**: React 19, Vite 8, Tailwind CSS 4, Lucide React icons, React Router DOM v7
+* **Backend**: Node.js, Express 5, Helmet, Express-Rate-Limit, CORS
+* **Database & Auth**: Supabase (PostgreSQL, Supabase Auth with RBAC, Supabase Storage)
+* **Code Quality**: Oxlint (fast Rust-based linter)
 
 ---
 
 ## 🚀 Getting Started
 
 ### 1. Prerequisites
-- **Node.js**: v18+ (tested on Node v24)
-- **npm**: v9+
+* **Node.js**: v18+ (tested on Node v20 & v22)
+* **npm**: v9+
+* **Supabase Project**: Dev / Staging Supabase project
 
-### 2. Running the Frontend (Client)
+### 2. Environment Configuration
+
+Copy the example environment files in both client and server before starting:
+
+#### Server Configuration
 ```bash
-# From root directory:
+cp server/.env.example server/.env
+```
+Fill in the required variables in `server/.env`:
+* `PORT`: Server port (default `5000`)
+* `CORS_ORIGIN`: Comma-separated allowed frontend origins (e.g. `http://localhost:5173`)
+* `JWT_SECRET`: Secure secret key for signing tokens
+* `SUPABASE_URL`: Your Supabase project URL (`https://your-project.supabase.co`)
+* `SUPABASE_ANON_KEY`: Supabase anon/public API key
+* `SUPABASE_SERVICE_ROLE_KEY`: Supabase service role key (server-only, never expose to client)
+* `DATABASE_URL`: Direct PostgreSQL connection string (optional)
+
+#### Client Configuration
+```bash
+cp client/.env.example client/.env.local
+```
+Fill in the variables in `client/.env.local`:
+* `VITE_API_URL`: Backend server URL (default `http://localhost:5000`)
+* `VITE_SUPABASE_URL`: Your Supabase project URL
+* `VITE_SUPABASE_ANON_KEY`: Supabase anon/public API key
+
+> [!CAUTION]
+> Never commit `.env` or `.env.*` files. Secrets must always remain out of version control.
+
+### 3. Running Locally
+
+```bash
+# Start Client (Frontend)
 npm run dev:client
+# Storefront opens at http://localhost:5173
 
-# Or navigate directly to client:
-cd client
-npm run dev
-```
-Open **http://localhost:5173** in your browser.
-
-### 3. Running the Backend (Server)
-```bash
-# From root directory:
+# Start Server (Backend)
 npm run dev:server
-
-# Or navigate directly to server:
-cd server
-npm run dev
+# Server listens at http://localhost:5000 (Health check at http://localhost:5000/api/health)
 ```
-The server will start at **http://localhost:5000** with the `/api/health` endpoint active.
 
 ---
 
-## ✨ Features
+## 🔒 Security & Environment Architecture
 
-### 🛍️ Luxury Storefront
-- **Dynamic Homepage**: High-impact editorial hero, category showcase, workshop story from Sialkot atelier, customer testimonials, and newsletter signup.
-- **Interactive Mega Menu**: Desktop dropdown with direct links to men's, women's, riding, and cowhide collections.
-- **Product Filtering & Sorting**: Filter by category, gender, leather finish, and price with real-time responsive grid.
-- **Quick-View & Full Detail Page**: Multi-angle image carousels, size selection, specifications, and leather care instructions.
-- **Persistent Shopping Cart**: Slide-out cart drawer with free shipping progress bar, promo coupon engine, and local storage persistence.
-- **Multi-Step Checkout**: Shipping calculation, payment method selection, and instant order confirmation.
+1. **Root Git Hygiene**: Root and child `.gitignore` rules strictly prevent tracking of any `.env` or `.env.*` files.
+2. **Fail-Fast Server**: Server immediately halts on startup with a descriptive error if critical environment variables (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `JWT_SECRET`) are missing.
+3. **CORS & Rate Limiting**: Express 5 enforces strict origin filtering via `CORS_ORIGIN` and restricts abuse via `express-rate-limit` (100 req / 15 min).
+4. **Isolated Client Credentials**: Only `VITE_SUPABASE_ANON_KEY` is referenced in the frontend. `SUPABASE_SERVICE_ROLE_KEY` and database credentials are strictly forbidden and kept on the server only.
 
-### 👤 Customer Portal (`/account`)
-- Customer signup and login.
-- Real-time order history tracking and shipment status.
-- Saved addresses, customer profile, and wishlist management.
+---
 
-### 🛡️ Admin Operations (`/admin`)
-- **Dashboard**: Executive metrics, revenue trend graphs, low-stock warnings, and recent dispatches.
-- **Product Management**: Full product listing with filtering, status toggle, and create/edit forms.
-- **Order Processing**: Track payment and fulfillment status with inspectable details.
-- **Homepage CMS**: Custom live text and banner controls.
-- **B2B Export Catalog**: Wholesale catalog distribution to international buyers.
-- **Media Library & Analytics**: Image assets library and export performance metrics.
+## 📋 Current Status & Known Limitations
+
+The following items represent legacy mocked flows identified during the architectural audit and slated for resolution in upcoming development phases:
+
+| Component | Current State | Target Future State |
+| :--- | :--- | :--- |
+| **Order Creation** | Saved only to browser `localStorage` (`jab_placed_orders`). Admin orders page reads Supabase `orders` table. | Storefront checkout writes directly to Supabase `orders` table with stock validation. |
+| **Customer Auth** | Frontend localStorage mock (`jab_auth_user`). Accepts any email/password. | Migrate customer authentication to Supabase Auth. |
+| **Payment Gateway** | Sandbox simulation in `paymentService.simulatePaymentProcessing` (always returns success). | PCI-compliant Stripe / PayPal / Wire transfer workflow with webhook status updates. |
+| **Inventory / Stock** | Stock is read from Supabase products, but checkout does not decrement stock. | Transactional database stock check and decrement upon order placement. |
+| **Multi-Currency** | Admin products default to PKR while storefront defaults to USD with hardcoded $150 free shipping threshold. | Dynamic multi-currency conversion with unified shipping calculation engine. |
+| **Contact & Newsletter** | Client `setTimeout` simulated delay; submissions are not persisted. | Server-backed or Supabase-backed leads table and notification emails. |
+| **CMS & Coupons** | Admin coupons and homepage CMS persist in local storage fallback. | Dedicated Supabase tables for dynamic homepage CMS blocks and promotional coupons. |
