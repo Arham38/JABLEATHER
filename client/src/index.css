@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --primary: #171717;
+    --deep-brown: #3A2418;
+    --leather: #A66A3F;
+    --leather-hover: #8e5832;
+    --warm-bg: #F7F5F0;
+    --primary-text: #1C1C1C;
+    --muted-text: #6B665F;
+    --border: #DDD8D0;
+    --white: #FFFFFF;
+  }
+
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--warm-bg);
+    color: var(--primary-text);
+    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--primary);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1ede6;
+}
+::-webkit-scrollbar-thumb {
+  background: #c5beb3;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a66a3f;
+}
+
+/* Luxury animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease-out forwards;
+}
