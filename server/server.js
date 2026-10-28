@@ -93,6 +93,10 @@ const paymentRoutes = require('./payments/paymentRoutes');
 app.use('/api/payments', paymentRoutes);
 app.use('/api', paymentRoutes); // Supports /api/orders/:order_number/status
 
+// Catalog & Inventory Routes
+const catalogRoutes = require('./catalog/catalogRoutes');
+app.use('/api/catalog', catalogRoutes);
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({

@@ -155,4 +155,61 @@ Before switching this platform from sandbox/staging to live production:
 
 ---
 
+## 7. Complete Leather Catalog Taxonomy & Shopify-Style Admin Management (Phase 6 Upgrade)
+
+A comprehensive upgrade was executed to transform JAB LEATHER into a high-end luxury leather-goods ecommerce store with an enterprise Shopify-style product management dashboard.
+
+### 7.1 Complete Leather Taxonomy (All 14 Requested Categories)
+The catalog architecture and database schema were expanded to support the complete 14-category leather taxonomy:
+1. **Men's Leather Jackets** (`mens-leather-jackets`) — Biker, bomber, cafe racer, and aviator jackets in full-grain cowhide and lambskin.
+2. **Women's Leather Jackets** (`womens-leather-jackets`) — Asymmetrical riders, cropped bombers, and shearling jackets in supple nappa.
+3. **Leather Vests** (`leather-vests`) — Club vests, concealed-carry cuts, and formal waistcoats with reinforced stitchwork.
+4. **Cowhide Rugs** (`cowhide-rugs`) — 100% natural, chromium-tanned genuine cowhide rugs with lustrous hair-on finish.
+5. **Leather Gloves** (`leather-gloves`) — Touchscreen winter gloves, perforated track gauntlets, and thermal fleece-lined riding gloves.
+6. **Motorcycle Leather Suits** (`motorcycle-leather-suits`) — CE Level-2 certified 1-piece and 2-piece track race suits with titanium sliders.
+7. **Leather Pants** (`leather-pants`) — Touring pants, skinny rock biker trousers, and perforated chap pants with flex stretch ribs.
+8. **Leather Coats** (`leather-coats`) — Floor-length trench coats, double-breasted officer overcoats, and winter car coats.
+9. **Leather Wallets** (`leather-wallets`) — RFID-shielded bifold wallets, minimalist cardholders, and biker chain long wallets.
+10. **Leather Belts** (`leather-belts`) — Solid single-strip 1.5" English bridle leather belts with interchangeable roller buckles.
+11. **Leather Bags** (`leather-bags`) — Artisan 45L weekend duffles, executive laptop briefcases, and roll-top backpacks.
+12. **Leather Accessories** (`leather-accessories`) — Valet trays, desk mats, key fobs, luggage tags, journals, and watch rolls.
+13. **Custom Leather Products** (`custom-leather-products`) — Bespoke made-to-measure tailoring with personalized embossing and hide selection.
+14. **Wholesale Orders** (`wholesale-orders`) — Direct B2B manufacturing in Sialkot for international brands, clubs, and retailers.
+
+### 7.2 Dynamic Storefront Navigation
+- **Responsive Desktop Mega Menu** (`MegaMenu.jsx`): Dynamically loads active categories from `categoryService` and groups them into 4 structured columns (Outerwear & Vests, Motorcycle Apparel, Fine Leather Goods, Bespoke & Wholesale) plus an Atelier Spotlight card. Dynamically renders any custom categories created by admins.
+- **Mobile Expandable Accordion** (`MobileHeader.jsx`): Accessible navigation drawer displaying dynamic categories with item count badges and quick links.
+- **Instant Cache Invalidation**: `categoryService.invalidateCache()` and `productService.invalidateCache()` are automatically triggered upon any administrative create, update, or delete action, reflecting changes across the storefront without delay.
+
+### 7.3 Storefront Shop & Visibility Rules
+- **Advanced Shop Filtering & Search** (`ShopPage.jsx`): Real-time keyword search (title, SKU, leather type), category filter pills, price range sliders, and multi-field sorting (newest, price low-to-high, price high-to-low, best-selling, featured).
+- **Strict Public Visibility Enforcement**: The public storefront and search endpoints only display products where `status === 'active'`. Products in `draft` or `archived` status return 404 for non-administrators, preventing accidental leaks of unreleased inventory.
+
+### 7.4 Shopify-Style Admin Dashboard & Product Workflow
+- **Executive KPI Dashboard** (`AdminDashboard.jsx`): Live metrics for Total Products, Published, Drafts, Categories, Orders, Low Stock Alerts, and Settled Revenue, paired with a unified chronological activity feed and recent orders table.
+- **Searchable Products Table** (`AdminProductsPage.jsx`): Status tabs (`All`, `Active`, `Draft`, `Archived`, `Low Stock`) with real-time counts, category filter dropdown, multi-select checkboxes, and a floating bulk action bar supporting **Bulk Publish**, **Bulk Set to Draft**, **Bulk Archive**, and **Bulk Delete**.
+- **Quick Preview Modal**: Live modal allowing administrators to inspect full product specifications, variant matrices, and view direct storefront links prior to publishing.
+- **8-Section Shopify Product Workflow** (`AdminProductEditPage.jsx`):
+  1. *Basic Information*: Product Title, Short Description, and Comprehensive Details.
+  2. *Media Management*: Drag-and-drop / file upload to Supabase Storage bucket `product-images`, URL adder, primary image selector, and image deletion.
+  3. *Pricing*: Selling Price, Compare-At Strike-Through Price, and Store Currency selector.
+  4. *Inventory & Stock*: Unique SKU code, Available Stock Count, and Low-Stock Threshold warning trigger.
+  5. *Organization & Classification*: Primary Category selector, Department/Gender classification (`men`, `women`, `unisex`), and Custom Search Tags.
+  6. *Variants Matrix*: Dynamic size selector (XS to 3XL, custom sizes) and interactive Color Swatch Builder with hex color picker and visual preview dots.
+  7. *Search Engine Optimization (SEO)*: Custom URL Slug, SEO Title tag, Meta Description, and a real-time **Google Search Result SERP Preview**.
+  8. *Status & Publishing Controls*: One-click "Save as Draft", "Publish Product", and modal preview. Preserves all unmodified product attributes.
+- **Dynamic Categories Management** (`AdminCategoriesPage.jsx`): Category creation, slug generation, image banner assignment, show-in-navbar toggling, navigation sort order reordering (`ArrowUp`/`ArrowDown`), and safe deletion that unlinks products and subcategories first to prevent broken references.
+
+### 7.5 Backend Catalog REST API
+Mounted at `/api/catalog` in `server/server.js` with role-based JWT validation:
+- `GET /api/catalog/products`: Public returns active items only; admin query returns drafts, archived, and full stock details.
+- `GET /api/catalog/products/:idOrSlug`: Public returns 404 for drafts; admin previews any product.
+- `POST /api/catalog/products`: Validates and creates products with full variant specs.
+- `PUT /api/catalog/products/:id`: Admin update with field validation.
+- `POST /api/catalog/products/bulk`: Bulk status changes (`publish`, `draft`, `archive`) or bulk deletions.
+- `DELETE /api/catalog/products/:id`: Admin product deletion.
+- `GET /api/catalog/categories`, `POST`, `PUT`, `DELETE /api/catalog/categories/:id`: Dynamic category CRUD.
+
+---
+
 *Report prepared by Antigravity Autonomous Pair Programmer for JAB LEATHER.*

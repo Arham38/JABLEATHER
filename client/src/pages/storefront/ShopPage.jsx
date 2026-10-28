@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { SlidersHorizontal, ArrowUpDown } from 'lucide-react';
+import { SlidersHorizontal, ArrowUpDown, Search, X } from 'lucide-react';
 import { productService } from '../../services/productService';
 import { categoryService } from '../../services/categoryService';
 import ProductGrid from '../../components/product/ProductGrid';
@@ -25,6 +25,7 @@ export const ShopPage = () => {
   const categoryParam = searchParams.get('category') || 'all';
   const genderParam = searchParams.get('gender') || 'all';
   const sortParam = searchParams.get('sort') || 'featured';
+  const searchParam = searchParams.get('search') || '';
   const pageParam = parseInt(searchParams.get('page') || '1', 10);
   const leatherTypeParam = searchParams.get('leatherType') || '';
   const inStockParam = searchParams.get('inStock') === 'true';
@@ -32,6 +33,12 @@ export const ShopPage = () => {
   const [priceRange, setPriceRange] = useState([0, Infinity]);
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [isSortDrawerOpen, setIsSortDrawerOpen] = useState(false);
+  const [searchInput, setSearchInput] = useState(searchParam);
+  const [prevSearchParam, setPrevSearchParam] = useState(searchParam);
+  if (prevSearchParam !== searchParam) {
+    setPrevSearchParam(searchParam);
+    setSearchInput(searchParam);
+  }
 
   // Load categories
   useEffect(() => {
@@ -51,6 +58,7 @@ export const ShopPage = () => {
         const res = await productService.getProducts({
           category: categoryParam !== 'all' ? categoryParam : null,
           gender: genderParam !== 'all' ? genderParam : null,
+          search: searchParam || null,
           sort: sortParam,
           minPrice: priceRange[0],
           maxPrice: priceRange[1],
@@ -73,7 +81,7 @@ export const ShopPage = () => {
     };
 
     fetchFiltered();
-  }, [categoryParam, genderParam, sortParam, priceRange, leatherTypeParam, inStockParam, pageParam]);
+  }, [categoryParam, genderParam, searchParam, sortParam, priceRange, leatherTypeParam, inStockParam, pageParam]);
 
   const updateParam = (key, value) => {
     const newParams = new URLSearchParams(searchParams);
@@ -168,22 +176,55 @@ export const ShopPage = () => {
 
         {/* Product Grid Area */}
         <div className="lg:col-span-3">
-          {/* Desktop Sort Bar */}
-          <div className="hidden lg:flex items-center justify-end gap-3 mb-6 pb-3 border-b border-stone-200">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#6B665F]">
-              Sort By:
-            </span>
-            <select
-              value={sortParam}
-              onChange={(e) => updateParam('sort', e.target.value)}
-              className="text-xs bg-white border border-[#DDD8D0] rounded-xs px-3 py-2 font-medium text-[#1C1C1C] focus:outline-none focus:border-[#171717]"
-            >
-              {sortOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+          {/* Top Controls: Search Bar & Sort Bar */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-stone-200">
+            {/* Search Input */}
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+              <input
+                type="text"
+                placeholder="Search products by title, SKU, or leather..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    updateParam('search', searchInput.trim());
+                  }
+                }}
+                className="w-full pl-9 pr-9 py-2 text-xs bg-white border border-[#DDD8D0] rounded-xs text-[#1C1C1C] placeholder:text-stone-400 focus:outline-none focus:border-[#171717]"
+              />
+              {searchInput && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchInput('');
+                    updateParam('search', '');
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-stone-400 hover:text-stone-700"
+                  aria-label="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Desktop Sort Dropdown */}
+            <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#6B665F]">
+                Sort:
+              </span>
+              <select
+                value={sortParam}
+                onChange={(e) => updateParam('sort', e.target.value)}
+                className="text-xs bg-white border border-[#DDD8D0] rounded-xs px-3 py-2 font-medium text-[#1C1C1C] focus:outline-none focus:border-[#171717]"
+              >
+                {sortOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Grid */}

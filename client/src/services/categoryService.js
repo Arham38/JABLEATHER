@@ -61,6 +61,11 @@ const fetchActiveCategories = async () => {
 };
 
 export const categoryService = {
+  invalidateCache: () => {
+    cachedCategories = null;
+    lastCategoriesFetch = 0;
+  },
+
   getCategories: fetchActiveCategories,
 
   getCategoryBySlug: async (slug) => {

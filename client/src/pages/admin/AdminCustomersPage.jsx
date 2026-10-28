@@ -54,9 +54,9 @@ export const AdminCustomersPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800">
-              {loading && <tr><td colSpan="5" className="p-6 text-slate-400">Loading customers...</td></tr>}
-              {error && <tr><td colSpan="5" role="alert" className="p-6 text-red-300">Unable to load customers: {error}</td></tr>}
-              {!loading && !error && filtered.length === 0 && <tr><td colSpan="5" className="p-6 text-slate-400">No customer records found.</td></tr>}
+              {loading && <tr><td colSpan="6" className="p-6 text-slate-400">Loading customers...</td></tr>}
+              {error && <tr><td colSpan="6" role="alert" className="p-6 text-red-300">Unable to load customers: {error}</td></tr>}
+              {!loading && !error && filtered.length === 0 && <tr><td colSpan="6" className="p-6 text-slate-400">No customer records found.</td></tr>}
               {filtered.map((c) => (
                 <tr key={c.id} className="hover:bg-slate-900/50">
                   <td className="py-3 px-4 font-bold text-white">
