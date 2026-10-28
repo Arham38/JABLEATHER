@@ -26,7 +26,7 @@ export const ResetPasswordPage = () => {
 
     setIsLoading(true);
     try {
-      await authService.resetPassword('token', password);
+      await authService.resetPassword(password);
       toast.success('Your password has been updated! Please sign in.');
       navigate('/account/login');
     } catch {
