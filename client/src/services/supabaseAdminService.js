@@ -124,15 +124,19 @@ const toProductRow = (form) => ({
 
 const mapOrder = (row) => ({
   ...row,
-  id: row.order_number,
+  id: row.order_number || row.id,
   databaseId: row.id,
+  orderNumber: row.order_number,
   date: row.created_at,
   customer: row.customer || {},
   shippingAddress: row.shipping_address || {},
   items: row.items || [],
   shippingFee: Number(row.shipping) || 0,
-  paymentStatus: row.payment_status,
-  orderStatus: row.order_status,
+  discount: Number(row.discount) || 0,
+  tax: Number(row.tax) || 0,
+  paymentStatus: row.payment_status || 'unpaid',
+  orderStatus: row.order_status || 'pending',
+  trackingNumber: row.payment_reference || '',
   total: Number(row.total) || 0,
   subtotal: Number(row.subtotal) || 0,
 });
@@ -220,16 +224,30 @@ export const supabaseAdminService = {
     return data.map(mapOrder);
   },
 
-  async getOrderById(orderNumber) {
+  async getOrderById(orderIdentifier) {
     await requireAdmin();
-    const { data, error } = await supabase.from('orders').select('id,order_number,customer,shipping_address,items,subtotal,shipping,tax,total,currency,payment_method,payment_provider,payment_transaction_id,payment_reference,payment_status,order_status,created_at,updated_at').eq('order_number', orderNumber).single();
+    let query = supabase.from('orders').select('id,order_number,customer,shipping_address,items,subtotal,shipping,tax,total,currency,payment_method,payment_provider,payment_transaction_id,payment_reference,payment_status,order_status,created_at,updated_at');
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderIdentifier);
+    if (isUuid) {
+      query = query.eq('id', orderIdentifier);
+    } else {
+      query = query.eq('order_number', orderIdentifier);
+    }
+    const { data, error } = await query.single();
     if (error) throw error;
     return mapOrder(data);
   },
 
-  async updateOrderStatus(orderNumber, status) {
+  async updateOrderStatus(orderIdentifier, status) {
     await requireAdmin();
-    const { data, error } = await supabase.from('orders').update({ order_status: status.toLowerCase() }).eq('order_number', orderNumber).select('id,order_number,customer,shipping_address,items,subtotal,shipping,tax,total,currency,payment_method,payment_provider,payment_transaction_id,payment_reference,payment_status,order_status,created_at,updated_at').single();
+    let query = supabase.from('orders').update({ order_status: status.toLowerCase() });
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderIdentifier);
+    if (isUuid) {
+      query = query.eq('id', orderIdentifier);
+    } else {
+      query = query.eq('order_number', orderIdentifier);
+    }
+    const { data, error } = await query.select('id,order_number,customer,shipping_address,items,subtotal,shipping,tax,total,currency,payment_method,payment_provider,payment_transaction_id,payment_reference,payment_status,order_status,created_at,updated_at').single();
     if (error) throw error;
     return mapOrder(data);
   },

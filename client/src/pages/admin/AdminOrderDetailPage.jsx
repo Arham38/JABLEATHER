@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Truck, Package, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import supabaseAdminService from '../../services/supabaseAdminService';
 import { formatCurrency } from '../../utils/currency';
 import { useToast } from '../../context/ToastContext';
@@ -48,13 +48,13 @@ export const AdminOrderDetailPage = () => {
           </div>
         </div>
 
-        <div className="flex gap-2">
-            {['processing', 'shipped', 'delivered'].map((st) => (
+        <div className="flex flex-wrap gap-2">
+          {['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'].map((st) => (
             <button
               key={st}
               onClick={() => handleStatusUpdate(st)}
               className={`px-3 py-1.5 text-xs font-bold rounded transition ${
-                order.orderStatus === st
+                order.orderStatus?.toLowerCase() === st
                   ? 'bg-amber-600 text-white'
                   : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
               }`}
@@ -116,12 +116,34 @@ export const AdminOrderDetailPage = () => {
 
           <div className="p-6 bg-slate-950 border border-slate-800 rounded-lg space-y-2 text-xs">
             <h3 className="text-xs uppercase font-bold text-slate-300 pb-2 border-b border-slate-800">
-              Payment Breakdown
+              Payment & Fulfillment
             </h3>
+            <div className="flex justify-between items-center text-slate-400">
+              <span>Payment Status</span>
+              <span className={`font-bold capitalize ${order.paymentStatus === 'paid' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                {order.paymentStatus || 'unpaid'}
+              </span>
+            </div>
             <div className="flex justify-between text-slate-400">
+              <span>Payment Method</span>
+              <span className="capitalize text-slate-200">{order.paymentMethod || 'Card'}</span>
+            </div>
+            {order.trackingNumber && (
+              <div className="flex justify-between text-slate-400">
+                <span>Tracking</span>
+                <span className="font-mono text-slate-200">{order.trackingNumber}</span>
+              </div>
+            )}
+            <div className="pt-2 border-t border-slate-800 flex justify-between text-slate-400">
               <span>Subtotal</span>
               <span>{formatCurrency(order.subtotal, order.currency)}</span>
             </div>
+            {order.discount > 0 && (
+              <div className="flex justify-between text-emerald-400">
+                <span>Coupon Discount</span>
+                <span>-{formatCurrency(order.discount, order.currency)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-slate-400">
               <span>Shipping</span>
               <span>{order.shippingFee === 0 ? 'Free' : formatCurrency(order.shippingFee, order.currency)}</span>

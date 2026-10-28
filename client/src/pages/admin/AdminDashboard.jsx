@@ -73,8 +73,8 @@ export const AdminDashboard = () => {
           </div>
           {stats.recentOrders.length === 0 ? <p className="text-xs text-slate-400">No orders are recorded yet.</p> : (
             <div className="divide-y divide-slate-800">{stats.recentOrders.map((order) => (
-              <div key={order.databaseId} className="py-3 flex items-center justify-between gap-4 text-xs">
-                <div className="min-w-0"><Link to={`/admin/orders/${encodeURIComponent(order.id)}`} className="font-bold text-slate-200 hover:text-amber-400">{order.id}</Link><span className="block text-slate-500 truncate">{order.customer?.name || order.customer?.email || 'Customer'} • {order.orderStatus}</span></div>
+              <div key={order.databaseId || order.id} className="py-3 flex items-center justify-between gap-4 text-xs">
+                <div className="min-w-0"><Link to={`/admin/orders/${encodeURIComponent(order.id)}`} className="font-bold text-slate-200 hover:text-amber-400">{order.id}</Link><span className="block text-slate-500 truncate">{order.customer?.name || order.customer?.email || 'Customer'} • <span className="capitalize">{order.orderStatus}</span></span></div>
                 <strong className="shrink-0 text-slate-200">{formatCurrency(order.total, order.currency)}</strong>
               </div>
             ))}</div>

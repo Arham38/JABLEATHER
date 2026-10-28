@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Eye, Truck, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import { Eye } from 'lucide-react';
 import supabaseAdminService from '../../services/supabaseAdminService';
 import { formatCurrency } from '../../utils/currency';
 import { useToast } from '../../context/ToastContext';
@@ -33,7 +33,7 @@ export const AdminOrdersPage = () => {
   };
 
   const filteredOrders = orders.filter((o) =>
-    statusFilter === 'All' ? true : o.orderStatus === statusFilter
+    statusFilter === 'All' ? true : o.orderStatus?.toLowerCase() === statusFilter.toLowerCase()
   );
 
   return (
@@ -94,7 +94,7 @@ export const AdminOrdersPage = () => {
 
                   <td className="py-3 px-4">
                     <span className="font-semibold text-slate-200 block">{ord.customer?.name || 'Customer'}</span>
-                    <span className="text-slate-500 text-[10px]">{ord.customer.email}</span>
+                    <span className="text-slate-500 text-[10px]">{ord.customer?.email || 'N/A'}</span>
                   </td>
 
                   <td className="py-3 px-4 text-slate-400">
@@ -106,7 +106,9 @@ export const AdminOrdersPage = () => {
                   </td>
 
                   <td className="py-3 px-4">
-                    <span className="text-emerald-400 font-bold">{ord.paymentStatus}</span>
+                    <span className={`font-bold capitalize ${ord.paymentStatus === 'paid' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      {ord.paymentStatus}
+                    </span>
                   </td>
 
                   <td className="py-3 px-4">
