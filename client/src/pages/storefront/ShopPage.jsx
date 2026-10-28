@@ -37,7 +37,9 @@ export const ShopPage = () => {
   useEffect(() => {
     categoryService.getCategories()
       .then(setCategories)
-      .catch((err) => setCatalogError(err.message || 'Could not load categories.'));
+      .catch((err) => {
+        console.warn('Could not load categories:', err);
+      });
   }, []);
 
   // Fetch products

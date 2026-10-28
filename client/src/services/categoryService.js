@@ -28,7 +28,13 @@ const fetchActiveCategories = async () => {
     .order('sort_order', { ascending: true })
     .order('name', { ascending: true });
 
-  if (error) throw new Error(`Could not load categories: ${error.message}`);
+  if (error) {
+    if (error.code === 'PGRST200' || error.message?.includes('schema cache') || error.message?.includes('does not exist')) {
+      console.warn('Supabase categories table not found in schema cache. Run supabase/all_migrations_combined.sql in your Supabase SQL Editor.');
+      return [];
+    }
+    throw new Error(`Could not load categories: ${error.message}`);
+  }
   return (data || []).map(mapCategory);
 };
 
