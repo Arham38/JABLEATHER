@@ -416,14 +416,19 @@ export const ProductDetailPage = () => {
 
                 <button
                   onClick={() => toggleWishlist(product)}
-                  className={`p-3.5 border rounded-xs transition ${
+                  className={`p-3.5 border rounded-xs transition-all duration-200 cursor-pointer ${
                     isWishlisted
-                      ? 'border-red-500 text-red-500 bg-red-50'
-                      : 'border-[#DDD8D0] text-[#1C1C1C] hover:bg-stone-50'
+                      ? 'border-rose-400 text-rose-600 bg-rose-50 shadow-xs ring-1 ring-rose-200 scale-105 active:scale-95'
+                      : 'border-stone-300 text-stone-700 hover:text-rose-600 hover:border-stone-900 hover:bg-stone-50 active:scale-95'
                   }`}
-                  aria-label="Wishlist"
+                  aria-label={isWishlisted ? 'Remove from wishlist' : 'Save to wishlist'}
+                  title={isWishlisted ? 'Remove from wishlist' : 'Save to wishlist'}
                 >
-                  <Heart className={`w-5 h-5 ${isWishlisted ? 'fill-red-500' : ''}`} />
+                  <Heart
+                    className={`w-5 h-5 transition-transform duration-200 ${
+                      isWishlisted ? 'fill-rose-600 stroke-rose-600' : 'stroke-stone-700'
+                    }`}
+                  />
                 </button>
 
                 <button

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '../services/authService';
 import { cartService } from '../services/cartService';
+import { wishlistService } from '../services/wishlistService';
 import { useToast } from './ToastContext';
 import supabase from '../utils/supabase';
 
@@ -110,6 +111,7 @@ export const AuthProvider = ({ children }) => {
       const currentCustId = customer?.id;
       await authService.logout();
       cartService.clearCart(currentCustId);
+      wishlistService.clearWishlist(currentCustId);
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('jab:auth:logout'));
       }

@@ -88,14 +88,12 @@ export const WishlistPage = () => {
                   <span className="text-[10px] uppercase font-bold text-[#A66A3F] block">
                     {product.categoryName}
                   </span>
-                  <a
-                    href="https://www.instagram.com/jabthread/"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-xs font-bold text-[#171717] hover:text-[#A66A3F] line-clamp-1"
+                  <Link
+                    to={`/product/${product.slug}`}
+                    className="text-xs font-bold text-[#171717] hover:text-[#A66A3F] line-clamp-1 block mt-0.5"
                   >
                     {product.name}
-                  </a>
+                  </Link>
                   <p className="text-xs font-extrabold text-[#171717] mt-1">
                     {formatCurrency(product.price, product.currency)}
                   </p>

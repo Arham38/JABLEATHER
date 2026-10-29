@@ -40,12 +40,12 @@ export const Header = () => {
         <div className="flex items-center justify-between h-20">
           {/* Brand Logo */}
           <div className="flex-shrink-0">
-            <Link to="/" className="flex flex-col group">
-              <span className="text-2xl font-extrabold tracking-[-0.03em] text-[#171717] group-hover:text-[#A66A3F] transition-colors">
+            <Link to="/" className="flex flex-col group py-1">
+              <span className="text-2xl sm:text-[26px] font-black tracking-[-0.03em] text-[#121212] group-hover:text-[#A66A3F] transition-colors leading-none">
                 JAB LEATHER
               </span>
-              <span className="text-[9px] uppercase tracking-[0.25em] text-[#6B665F] font-semibold">
-                Sialkot • Pakistan
+              <span className="text-[9px] uppercase tracking-[0.28em] text-[#8A5832] font-bold mt-1">
+                Sialkot • Atelier Est. 2026
               </span>
             </Link>
           </div>
@@ -54,7 +54,7 @@ export const Header = () => {
           <nav className="hidden lg:flex items-center space-x-7">
             <Link
               to="/"
-              className="text-sm font-medium text-[#1C1C1C] hover:text-[#A66A3F] transition-colors py-2"
+              className="text-xs uppercase tracking-widest font-bold text-[#1C1C1C] hover:text-[#A66A3F] transition-colors py-2 relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-[2px] after:bg-[#A66A3F] after:scale-x-0 hover:after:scale-x-100 after:transition-transform after:duration-300"
             >
               Home
             </Link>
@@ -66,7 +66,7 @@ export const Header = () => {
             >
               <Link
                 to="/shop"
-                className="text-sm font-medium text-[#1C1C1C] hover:text-[#A66A3F] flex items-center gap-1 transition-colors"
+                className="text-xs uppercase tracking-widest font-bold text-[#1C1C1C] hover:text-[#A66A3F] flex items-center gap-1 transition-colors relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-[2px] after:bg-[#A66A3F] after:scale-x-0 hover:after:scale-x-100 after:transition-transform after:duration-300"
               >
                 <span>Shop</span>
                 <ChevronDown
@@ -79,71 +79,82 @@ export const Header = () => {
 
             <Link
               to="/men"
-              className="text-sm font-medium text-[#1C1C1C] hover:text-[#A66A3F] transition-colors py-2"
+              className="text-xs uppercase tracking-widest font-bold text-[#1C1C1C] hover:text-[#A66A3F] transition-colors py-2 relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-[2px] after:bg-[#A66A3F] after:scale-x-0 hover:after:scale-x-100 after:transition-transform after:duration-300"
             >
               Men
             </Link>
             <Link
               to="/women"
-              className="text-sm font-medium text-[#1C1C1C] hover:text-[#A66A3F] transition-colors py-2"
+              className="text-xs uppercase tracking-widest font-bold text-[#1C1C1C] hover:text-[#A66A3F] transition-colors py-2 relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-[2px] after:bg-[#A66A3F] after:scale-x-0 hover:after:scale-x-100 after:transition-transform after:duration-300"
             >
               Women
             </Link>
             <Link
               to="/best-sellers"
-              className="text-sm font-medium text-[#1C1C1C] hover:text-[#A66A3F] transition-colors py-2"
+              className="text-xs uppercase tracking-widest font-bold text-[#1C1C1C] hover:text-[#A66A3F] transition-colors py-2 relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-[2px] after:bg-[#A66A3F] after:scale-x-0 hover:after:scale-x-100 after:transition-transform after:duration-300"
             >
               Best Sellers
             </Link>
             <Link
               to="/new-arrivals"
-              className="text-sm font-medium text-[#1C1C1C] hover:text-[#A66A3F] transition-colors py-2"
+              className="text-xs uppercase tracking-widest font-bold text-[#1C1C1C] hover:text-[#A66A3F] transition-colors py-2 relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-[2px] after:bg-[#A66A3F] after:scale-x-0 hover:after:scale-x-100 after:transition-transform after:duration-300"
             >
               New Arrivals
             </Link>
             <Link
               to="/about"
-              className="text-sm font-medium text-[#1C1C1C] hover:text-[#A66A3F] transition-colors py-2"
+              className="text-xs uppercase tracking-widest font-bold text-[#1C1C1C] hover:text-[#A66A3F] transition-colors py-2 relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-[2px] after:bg-[#A66A3F] after:scale-x-0 hover:after:scale-x-100 after:transition-transform after:duration-300"
             >
-              About Us
+              About Atelier
             </Link>
             <Link
               to="/contact"
-              className="text-sm font-medium text-[#1C1C1C] hover:text-[#A66A3F] transition-colors py-2"
+              className="text-xs uppercase tracking-widest font-bold text-[#1C1C1C] hover:text-[#A66A3F] transition-colors py-2 relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-[2px] after:bg-[#A66A3F] after:scale-x-0 hover:after:scale-x-100 after:transition-transform after:duration-300"
             >
               Contact
             </Link>
           </nav>
 
           {/* Right Ecommerce Controls */}
-          <div className="hidden lg:flex items-center space-x-5">
+          <div className="hidden lg:flex items-center space-x-3 xl:space-x-4">
             {/* Search Trigger */}
             <button
               onClick={openSearch}
-              className="text-[#1C1C1C] hover:text-[#A66A3F] p-2 rounded-sm transition focus:outline-none focus:ring-2 focus:ring-stone-400"
+              className="text-[#1C1C1C] hover:text-[#A66A3F] p-2 rounded-full hover:bg-stone-100/70 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-stone-400 group cursor-pointer"
               aria-label="Search catalog"
             >
-              <Search className="w-5 h-5" />
+              <Search className="w-5 h-5 transition-transform duration-200 group-hover:scale-110" />
             </button>
 
             {/* Account Link */}
             <Link
               to={isAuthenticated ? '/account' : '/account/login'}
-              className="text-[#1C1C1C] hover:text-[#A66A3F] p-2 rounded-sm transition focus:outline-none focus:ring-2 focus:ring-stone-400"
+              className="inline-flex items-center gap-1.5 text-[#1C1C1C] hover:text-[#A66A3F] px-2.5 py-1.5 rounded-full hover:bg-stone-100/70 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-stone-400 group"
               aria-label={isAuthenticated ? `Account: ${customer?.name}` : 'Sign in'}
             >
-              <User className="w-5 h-5" />
+              <User className="w-5 h-5 transition-transform duration-200 group-hover:scale-110" />
+              {isAuthenticated && (
+                <span className="text-[11px] font-bold text-stone-900 max-w-[90px] truncate">
+                  {customer?.firstName || customer?.name?.split(' ')[0] || 'Account'}
+                </span>
+              )}
             </Link>
 
-            {/* Wishlist Link */}
+            {/* Wishlist Link (Fixed for unauthenticated + customer scoping) */}
             <Link
-              to="/account/wishlist"
-              className="relative text-[#1C1C1C] hover:text-[#A66A3F] p-2 rounded-sm transition focus:outline-none focus:ring-2 focus:ring-stone-400"
-              aria-label={`Wishlist with ${wishlistCount} items`}
+              to={isAuthenticated ? '/account/wishlist' : '/account/login'}
+              className="relative text-[#1C1C1C] hover:text-rose-600 p-2 rounded-full hover:bg-rose-50/60 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-rose-300 group"
+              aria-label={isAuthenticated ? `Wishlist with ${wishlistCount} items` : 'Sign in to access wishlist'}
             >
-              <Heart className="w-5 h-5" />
-              {wishlistCount > 0 && (
-                <span className="absolute top-1 right-1 bg-[#A66A3F] text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+              <Heart
+                className={`w-5 h-5 transition-all duration-200 group-hover:scale-110 ${
+                  isAuthenticated && wishlistCount > 0
+                    ? 'fill-rose-600 text-rose-600'
+                    : 'text-stone-800'
+                }`}
+              />
+              {isAuthenticated && wishlistCount > 0 && (
+                <span className="absolute top-1 right-1 bg-rose-600 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs animate-scale-in">
                   {wishlistCount}
                 </span>
               )}
@@ -152,12 +163,12 @@ export const Header = () => {
             {/* Cart Trigger */}
             <button
               onClick={openCart}
-              className="relative text-[#1C1C1C] hover:text-[#A66A3F] p-2 rounded-sm transition focus:outline-none focus:ring-2 focus:ring-stone-400"
+              className="relative text-[#1C1C1C] hover:text-[#A66A3F] p-2 rounded-full hover:bg-stone-100/70 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-stone-400 group cursor-pointer"
               aria-label={`Shopping bag with ${itemCount} items`}
             >
-              <ShoppingBag className="w-5 h-5" />
-              {itemCount > 0 && (
-                <span className="absolute top-1 right-1 bg-[#171717] text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+              <ShoppingBag className="w-5 h-5 transition-transform duration-200 group-hover:scale-110" />
+              {isAuthenticated && itemCount > 0 && (
+                <span className="absolute top-1 right-1 bg-[#121212] text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs animate-scale-in">
                   {itemCount}
                 </span>
               )}

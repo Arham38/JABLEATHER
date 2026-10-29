@@ -90,7 +90,7 @@ export const MobileHeader = () => {
             aria-label={`Cart with ${itemCount} items`}
           >
             <ShoppingBag className="w-5 h-5" />
-            {itemCount > 0 && (
+            {isAuthenticated && itemCount > 0 && (
               <span className="absolute top-1 right-1 bg-[#171717] text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
                 {itemCount}
               </span>
@@ -143,11 +143,12 @@ export const MobileHeader = () => {
                 <span>{isAuthenticated ? customer?.name : 'Sign In / Register'}</span>
               </Link>
               <Link
-                to="/account/wishlist"
+                to={isAuthenticated ? '/account/wishlist' : '/account/login'}
+                onClick={() => setIsOpen(false)}
                 className="flex items-center gap-1.5 text-[#1C1C1C] font-semibold hover:text-[#A66A3F]"
               >
-                <Heart className="w-4 h-4 text-[#A66A3F]" />
-                <span>Wishlist ({wishlistCount})</span>
+                <Heart className={`w-4 h-4 ${isAuthenticated && wishlistCount > 0 ? 'text-rose-600 fill-rose-600' : 'text-[#A66A3F]'}`} />
+                <span>Wishlist ({isAuthenticated ? wishlistCount : 0})</span>
               </Link>
             </div>
 
