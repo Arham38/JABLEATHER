@@ -4,12 +4,14 @@ import { Home, Compass, Search, Heart, ShoppingBag } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
 import { useUI } from '../../context/UIContext';
+import { useAuth } from '../../context/AuthContext';
 
 export const MobileBottomNav = () => {
   const location = useLocation();
   const { itemCount, openCart } = useCart();
   const { wishlistCount } = useWishlist();
   const { openSearch } = useUI();
+  const { isAuthenticated } = useAuth();
 
   const isActive = (path) => location.pathname === path;
 
@@ -50,14 +52,14 @@ export const MobileBottomNav = () => {
 
         {/* 4. Wishlist */}
         <Link
-          to="/account/wishlist"
+          to={isAuthenticated ? '/account/wishlist' : '/account/login'}
           className={`relative flex flex-col items-center justify-center transition-colors ${
             isActive('/account/wishlist') ? 'text-[#A66A3F]' : 'text-[#6B665F] hover:text-[#171717]'
           }`}
         >
-          <Heart className="w-5 h-5 mb-1" />
-          {wishlistCount > 0 && (
-            <span className="absolute top-2 right-4 bg-[#A66A3F] text-white text-[8px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">
+          <Heart className={`w-5 h-5 mb-1 ${isAuthenticated && wishlistCount > 0 ? 'fill-rose-600 text-rose-600' : ''}`} />
+          {isAuthenticated && wishlistCount > 0 && (
+            <span className="absolute top-2 right-4 bg-rose-600 text-white text-[8px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">
               {wishlistCount}
             </span>
           )}
@@ -71,7 +73,7 @@ export const MobileBottomNav = () => {
           aria-label="Open cart drawer"
         >
           <ShoppingBag className="w-5 h-5 mb-1" />
-          {itemCount > 0 && (
+          {isAuthenticated && itemCount > 0 && (
             <span className="absolute top-2 right-4 bg-[#171717] text-white text-[8px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">
               {itemCount}
             </span>

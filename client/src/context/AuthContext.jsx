@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '../services/authService';
+import { cartService } from '../services/cartService';
+import { wishlistService } from '../services/wishlistService';
 import { useToast } from './ToastContext';
 import supabase from '../utils/supabase';
 
-const AuthContext = createContext(null);
+export const AuthContext = createContext(null);
 
 const formatCustomer = (user) => {
   if (!user) return null;
@@ -106,7 +108,13 @@ export const AuthProvider = ({ children }) => {
 
   const logoutCustomer = async () => {
     try {
+      const currentCustId = customer?.id;
       await authService.logout();
+      cartService.clearCart(currentCustId);
+      wishlistService.clearWishlist(currentCustId);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('jab:auth:logout'));
+      }
       setCustomer(null);
       setAdmin(null);
       toast.info('You have been signed out');
@@ -131,6 +139,10 @@ export const AuthProvider = ({ children }) => {
   const logoutAdmin = async () => {
     try {
       await authService.adminLogout();
+      cartService.clearCart();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('jab:auth:logout'));
+      }
       setAdmin(null);
       setCustomer(null);
       toast.info('Admin logged out');

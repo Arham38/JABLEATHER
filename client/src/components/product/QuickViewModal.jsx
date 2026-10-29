@@ -230,17 +230,23 @@ const QuickViewContent = ({ product, onClose }) => {
             </Button>
 
             <button
-              onClick={() => toggleWishlist(product)}
-              className={`p-3 border rounded-xs transition ${
+              onClick={() => {
+                const res = toggleWishlist(product);
+                if (res === false && !isInWishlist(product.id)) {
+                  onClose();
+                }
+              }}
+              className={`p-3 border rounded-xs transition-all duration-200 cursor-pointer ${
                 isInWishlist(product.id)
-                  ? 'border-red-500 text-red-500 bg-red-50'
-                  : 'border-[#DDD8D0] text-[#1C1C1C] hover:bg-stone-50'
+                  ? 'border-rose-400 text-rose-600 bg-rose-50 ring-1 ring-rose-200 shadow-xs scale-105 active:scale-95'
+                  : 'border-stone-300 text-stone-700 hover:text-rose-600 hover:border-stone-900 hover:bg-stone-50 active:scale-95'
               }`}
-              aria-label="Save to wishlist"
+              aria-label={isInWishlist(product.id) ? 'Remove from wishlist' : 'Save to wishlist'}
+              title={isInWishlist(product.id) ? 'Remove from wishlist' : 'Save to wishlist'}
             >
               <Heart
-                className={`w-5 h-5 ${
-                  isInWishlist(product.id) ? 'fill-red-500' : ''
+                className={`w-5 h-5 transition-transform duration-200 ${
+                  isInWishlist(product.id) ? 'fill-rose-600 stroke-rose-600' : 'stroke-stone-700'
                 }`}
               />
             </button>

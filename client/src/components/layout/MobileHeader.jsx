@@ -5,14 +5,15 @@ import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
 import { useUI } from '../../context/UIContext';
 import { useAuth } from '../../context/AuthContext';
+import { categoryService } from '../../services/categoryService';
 
 export const MobileHeader = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [categories, setCategories] = useState([]);
   const [openAccordions, setOpenAccordions] = useState({
-    shop: false,
+    shop: true,
     men: false,
     women: false,
-    leatherGoods: false,
     collections: false,
   });
 
@@ -21,6 +22,18 @@ export const MobileHeader = () => {
   const { openSearch } = useUI();
   const { customer, isAuthenticated } = useAuth();
   const location = useLocation();
+
+  useEffect(() => {
+    let active = true;
+    categoryService.getCategories()
+      .then((cats) => {
+        if (active) {
+          setCategories((cats || []).filter((c) => c.status === 'active'));
+        }
+      })
+      .catch((err) => console.warn('Could not load mobile categories:', err));
+    return () => { active = false; };
+  }, [isOpen]);
 
   const [prevPathname, setPrevPathname] = useState(location.pathname);
   if (prevPathname !== location.pathname) {
@@ -77,7 +90,7 @@ export const MobileHeader = () => {
             aria-label={`Cart with ${itemCount} items`}
           >
             <ShoppingBag className="w-5 h-5" />
-            {itemCount > 0 && (
+            {isAuthenticated && itemCount > 0 && (
               <span className="absolute top-1 right-1 bg-[#171717] text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
                 {itemCount}
               </span>
@@ -130,11 +143,12 @@ export const MobileHeader = () => {
                 <span>{isAuthenticated ? customer?.name : 'Sign In / Register'}</span>
               </Link>
               <Link
-                to="/account/wishlist"
+                to={isAuthenticated ? '/account/wishlist' : '/account/login'}
+                onClick={() => setIsOpen(false)}
                 className="flex items-center gap-1.5 text-[#1C1C1C] font-semibold hover:text-[#A66A3F]"
               >
-                <Heart className="w-4 h-4 text-[#A66A3F]" />
-                <span>Wishlist ({wishlistCount})</span>
+                <Heart className={`w-4 h-4 ${isAuthenticated && wishlistCount > 0 ? 'text-rose-600 fill-rose-600' : 'text-[#A66A3F]'}`} />
+                <span>Wishlist ({isAuthenticated ? wishlistCount : 0})</span>
               </Link>
             </div>
 
@@ -144,122 +158,101 @@ export const MobileHeader = () => {
               <div>
                 <Link
                   to="/"
+                  onClick={() => setIsOpen(false)}
                   className="block py-2 text-base font-bold text-[#171717] hover:text-[#A66A3F]"
                 >
                   Home
                 </Link>
               </div>
 
-              {/* Accordion: Men */}
-              <div className="border-b border-stone-100 pb-2">
+              {/* Accordion: All Categories */}
+              <div className="border-b border-stone-200 pb-2">
                 <button
-                  onClick={() => toggleAccordion('men')}
+                  onClick={() => toggleAccordion('shop')}
                   className="w-full py-2 flex items-center justify-between text-base font-bold text-[#171717] hover:text-[#A66A3F] text-left"
                 >
-                  <span>Men's Leather</span>
+                  <span className="flex items-center gap-2">
+                    <span>Shop All Categories</span>
+                    <span className="text-[10px] font-bold bg-[#A66A3F]/15 text-[#A66A3F] px-1.5 py-0.5 rounded-xs">
+                      {categories.length}
+                    </span>
+                  </span>
                   <ChevronDown
                     className={`w-4 h-4 transition-transform duration-200 ${
-                      openAccordions.men ? 'rotate-180 text-[#A66A3F]' : ''
+                      openAccordions.shop ? 'rotate-180 text-[#A66A3F]' : ''
                     }`}
                   />
                 </button>
-                {openAccordions.men && (
-                  <div className="pl-3 py-2 space-y-2 text-sm text-[#6B665F]">
-                    <Link to="/men" className="block hover:text-[#171717] py-1 font-medium">All Men's</Link>
-                    <Link to="/category/biker-jackets" className="block hover:text-[#171717] py-1">Biker Jackets</Link>
-                    <Link to="/category/motorcycle-jackets" className="block hover:text-[#171717] py-1">Motorcycle Jackets</Link>
-                    <Link to="/category/bomber-jackets" className="block hover:text-[#171717] py-1">Bomber Jackets</Link>
-                    <Link to="/category/aviator-jackets" className="block hover:text-[#171717] py-1">Aviator & Shearling</Link>
-                    <Link to="/category/leather-blazers" className="block hover:text-[#171717] py-1">Leather Blazers</Link>
-                    <Link to="/category/vests" className="block hover:text-[#171717] py-1">Riding Vests</Link>
+                {openAccordions.shop && (
+                  <div className="pl-2 py-2 space-y-1.5 text-sm text-[#6B665F]">
+                    <Link
+                      to="/shop"
+                      onClick={() => setIsOpen(false)}
+                      className="block py-1.5 px-2 font-bold text-[#A66A3F] hover:bg-stone-50 rounded-xs"
+                    >
+                      Browse Entire Catalog →
+                    </Link>
+                    {categories.map((cat) => (
+                      <Link
+                        key={cat.id || cat.slug}
+                        to={`/category/${cat.slug}`}
+                        onClick={() => setIsOpen(false)}
+                        className="block py-1.5 px-2 hover:text-[#171717] hover:bg-stone-50 rounded-xs transition-colors"
+                      >
+                        {cat.name}
+                      </Link>
+                    ))}
                   </div>
                 )}
               </div>
 
-              {/* Accordion: Women */}
-              <div className="border-b border-stone-100 pb-2">
-                <button
-                  onClick={() => toggleAccordion('women')}
-                  className="w-full py-2 flex items-center justify-between text-base font-bold text-[#171717] hover:text-[#A66A3F] text-left"
+              {/* Shortcut Links */}
+              <div className="border-b border-stone-100 pb-2 space-y-1">
+                <Link
+                  to="/men"
+                  onClick={() => setIsOpen(false)}
+                  className="block py-2 text-sm font-semibold text-[#1C1C1C] hover:text-[#A66A3F]"
                 >
-                  <span>Women's Leather</span>
-                  <ChevronDown
-                    className={`w-4 h-4 transition-transform duration-200 ${
-                      openAccordions.women ? 'rotate-180 text-[#A66A3F]' : ''
-                    }`}
-                  />
-                </button>
-                {openAccordions.women && (
-                  <div className="pl-3 py-2 space-y-2 text-sm text-[#6B665F]">
-                    <Link to="/women" className="block hover:text-[#171717] py-1 font-medium">All Women's</Link>
-                    <Link to="/category/womens-jackets" className="block hover:text-[#171717] py-1">Tailored Jackets</Link>
-                    <Link to="/category/biker-jackets" className="block hover:text-[#171717] py-1">Asymmetric Riders</Link>
-                    <Link to="/category/bags" className="block hover:text-[#171717] py-1">Leather Totes</Link>
-                  </div>
-                )}
-              </div>
-
-              {/* Accordion: Leather Goods */}
-              <div className="border-b border-stone-100 pb-2">
-                <button
-                  onClick={() => toggleAccordion('leatherGoods')}
-                  className="w-full py-2 flex items-center justify-between text-base font-bold text-[#171717] hover:text-[#A66A3F] text-left"
+                  Men's Collection
+                </Link>
+                <Link
+                  to="/women"
+                  onClick={() => setIsOpen(false)}
+                  className="block py-2 text-sm font-semibold text-[#1C1C1C] hover:text-[#A66A3F]"
                 >
-                  <span>Leather Goods & Accessories</span>
-                  <ChevronDown
-                    className={`w-4 h-4 transition-transform duration-200 ${
-                      openAccordions.leatherGoods ? 'rotate-180 text-[#A66A3F]' : ''
-                    }`}
-                  />
-                </button>
-                {openAccordions.leatherGoods && (
-                  <div className="pl-3 py-2 space-y-2 text-sm text-[#6B665F]">
-                    <Link to="/category/bags" className="block hover:text-[#171717] py-1">Weekender Bags & Luggage</Link>
-                    <Link to="/category/belts-wallets" className="block hover:text-[#171717] py-1">Solid Brass Belts</Link>
-                    <Link to="/category/belts-wallets" className="block hover:text-[#171717] py-1">Saddle-Stitched Wallets</Link>
-                    <Link to="/category/accessories" className="block hover:text-[#171717] py-1">Hats & Gloves</Link>
-                  </div>
-                )}
-              </div>
-
-              {/* Accordion: Collections */}
-              <div className="border-b border-stone-100 pb-2">
-                <button
-                  onClick={() => toggleAccordion('collections')}
-                  className="w-full py-2 flex items-center justify-between text-base font-bold text-[#171717] hover:text-[#A66A3F] text-left"
+                  Women's Collection
+                </Link>
+                <Link
+                  to="/best-sellers"
+                  onClick={() => setIsOpen(false)}
+                  className="block py-2 text-sm font-semibold text-[#1C1C1C] hover:text-[#A66A3F]"
                 >
-                  <span>Collections</span>
-                  <ChevronDown
-                    className={`w-4 h-4 transition-transform duration-200 ${
-                      openAccordions.collections ? 'rotate-180 text-[#A66A3F]' : ''
-                    }`}
-                  />
-                </button>
-                {openAccordions.collections && (
-                  <div className="pl-3 py-2 space-y-2 text-sm text-[#6B665F]">
-                    <Link to="/best-sellers" className="block hover:text-[#171717] py-1">Best Sellers</Link>
-                    <Link to="/new-arrivals" className="block hover:text-[#171717] py-1">New Arrivals</Link>
-                    <Link to="/collections/riding-collection" className="block hover:text-[#171717] py-1">Riding Gear</Link>
-                    <Link to="/collections/cowhide-collection" className="block hover:text-[#171717] py-1">Cowhide Collection</Link>
-                    <Link to="/collections/custom-collection" className="block hover:text-[#171717] py-1">Custom & Wholesale B2B</Link>
-                  </div>
-                )}
-              </div>
-
-              {/* Static links */}
-              <div>
-                <Link to="/shop" className="block py-2 text-base font-bold text-[#171717] hover:text-[#A66A3F]">
-                  All Products
+                  Best Sellers
+                </Link>
+                <Link
+                  to="/new-arrivals"
+                  onClick={() => setIsOpen(false)}
+                  className="block py-2 text-sm font-semibold text-[#1C1C1C] hover:text-[#A66A3F]"
+                >
+                  New Arrivals
                 </Link>
               </div>
-              <div>
-                <Link to="/about" className="block py-2 text-base font-bold text-[#171717] hover:text-[#A66A3F]">
-                  About Our Workshop
+
+              {/* Informational */}
+              <div className="space-y-1">
+                <Link
+                  to="/about"
+                  onClick={() => setIsOpen(false)}
+                  className="block py-2 text-sm font-semibold text-[#1C1C1C] hover:text-[#A66A3F]"
+                >
+                  About Our Sialkot Atelier
                 </Link>
-              </div>
-              <div>
-                <Link to="/contact" className="block py-2 text-base font-bold text-[#171717] hover:text-[#A66A3F]">
-                  Contact & Custom Quotes
+                <Link
+                  to="/contact"
+                  onClick={() => setIsOpen(false)}
+                  className="block py-2 text-sm font-semibold text-[#1C1C1C] hover:text-[#A66A3F]"
+                >
+                  Custom Orders &amp; Wholesale B2B
                 </Link>
               </div>
             </div>

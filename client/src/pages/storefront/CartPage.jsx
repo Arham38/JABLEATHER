@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, Truck, Tag } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
 import { formatCurrency } from '../../utils/currency';
 import Breadcrumbs from '../../components/common/Breadcrumbs';
 import Button from '../../components/common/Button';
@@ -22,11 +23,13 @@ export const CartPage = () => {
     removeCoupon,
     updateQuantity,
     removeFromCart,
+    clearCart,
   } = useCart();
   const currency = items[0]?.currency || 'USD';
 
   const [couponCode, setCouponCode] = useState('');
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
 
   const handleApplyCoupon = async (e) => {
     e.preventDefault();
@@ -36,6 +39,26 @@ export const CartPage = () => {
       setCouponCode('');
     } catch {}
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+        <Breadcrumbs items={[{ label: 'Shopping Bag' }]} />
+        <div className="max-w-md mx-auto py-16 bg-white rounded-xs border border-[#DDD8D0] p-8 mt-6">
+          <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4 text-[#A66A3F]">
+            <ShoppingBag className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-bold text-[#171717] mb-2">Sign In Required</h2>
+          <p className="text-xs text-[#6B665F] mb-6">
+            Please sign in to your JAB Leather account to view, add, or manage your shopping bag.
+          </p>
+          <Link to="/account/login">
+            <Button variant="primary" size="md">Sign In to Your Account</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (
@@ -61,9 +84,19 @@ export const CartPage = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <Breadcrumbs items={[{ label: 'Shopping Bag' }]} />
 
-      <h1 className="text-2xl sm:text-4xl font-extrabold text-[#171717] mt-4 mb-8">
-        Your Shopping Bag ({itemCount} {itemCount === 1 ? 'item' : 'items'})
-      </h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-4 mb-8">
+        <h1 className="text-2xl sm:text-4xl font-extrabold text-[#171717]">
+          Your Shopping Bag ({itemCount} {itemCount === 1 ? 'item' : 'items'})
+        </h1>
+        <button
+          type="button"
+          onClick={clearCart}
+          className="text-xs font-semibold text-stone-500 hover:text-red-700 transition inline-flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+        >
+          <Trash2 className="w-4 h-4" />
+          <span>Empty Entire Bag</span>
+        </button>
+      </div>
 
       {/* Free Shipping Alert Bar */}
       <div className="bg-white border border-[#DDD8D0] rounded-xs p-4 mb-8 flex flex-col sm:flex-row items-center justify-between gap-4">

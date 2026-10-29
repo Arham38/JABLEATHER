@@ -1,28 +1,45 @@
 import { storage } from '../utils/storage';
 import supabase from '../utils/supabase';
+import { BASELINE_PRODUCTS } from '../data/baselineCatalog';
 
-const CART_KEY = 'jab_shopping_cart';
+const getStorageKey = (customerId) => (customerId ? `jab_cart_${customerId}` : null);
+
+// Eradicate any legacy unauthenticated cart key to prevent stale ghost items
+if (typeof window !== 'undefined') {
+  try {
+    window.localStorage.removeItem('jab_shopping_cart');
+  } catch {}
+}
 
 export const cartService = {
-  // Get raw stored cart items (minimal references: productId, size, color, quantity)
-  getCart: () => {
-    return storage.get(CART_KEY, []);
+  // Get raw stored cart items (strictly scoped to authenticated customer)
+  getCart: (customerId) => {
+    const key = getStorageKey(customerId);
+    if (!key) return [];
+    return storage.get(key, []);
   },
 
-  // Save minimal cart items to storage
-  saveCart: (items) => {
+  // Save minimal cart items to storage (strictly scoped to authenticated customer)
+  saveCart: (items, customerId) => {
+    const key = getStorageKey(customerId);
+    if (!key) return [];
     const minimal = (items || []).map((item) => ({
       productId: item.productId || item.id,
       size: item.size || 'Standard',
       color: item.color || '',
       quantity: Number(item.quantity) || 1,
     }));
-    storage.set(CART_KEY, minimal);
+    storage.set(key, minimal);
     return minimal;
   },
 
-  clearCart: () => {
-    storage.remove(CART_KEY);
+  clearCart: (customerId) => {
+    const key = getStorageKey(customerId);
+    if (key) {
+      storage.remove(key);
+    }
+    // Also ensure legacy key is cleaned
+    storage.remove('jab_shopping_cart');
     return [];
   },
 
@@ -118,24 +135,35 @@ export const cartService = {
       return { hydratedItems: hydrated, notices };
     } catch (err) {
       console.warn('Cart re-validation notice:', err.message);
-      // Graceful fallback: return raw items as hydrated if offline or staging schema mismatch
-      const fallback = rawItems.map((raw) => ({
-        cartItemId: raw.cartItemId || `${raw.productId || raw.id}-${raw.size}-${raw.color}`.replace(/\s+/g, '-'),
-        id: raw.productId || raw.id,
-        productId: raw.productId || raw.id,
-        name: raw.name || 'Leather Item',
-        slug: raw.slug || '',
-        sku: raw.sku || '',
-        price: Number(raw.price) || 0,
-        compareAtPrice: raw.compareAtPrice ? Number(raw.compareAtPrice) : null,
-        currency: raw.currency || 'USD',
-        image: raw.image || '',
-        size: raw.size || 'Standard',
-        color: raw.color || '',
-        quantity: Number(raw.quantity) || 1,
-        stockCount: raw.stockCount || 10,
-        inStock: true,
-      }));
+      // Fallback: cross-reference against baseline catalog and drop non-existent ghost items
+      const baselineMap = new Map((BASELINE_PRODUCTS || []).map((p) => [p.id, p]));
+      const fallback = [];
+
+      for (const raw of rawItems) {
+        const prodId = raw.productId || raw.id;
+        const base = baselineMap.get(prodId) || (BASELINE_PRODUCTS || []).find((p) => p.legacyId === prodId || p.slug === raw.slug);
+        if (base && base.status === 'active') {
+          const selectedSize = raw.size || 'Standard';
+          const selectedColor = raw.color || '';
+          fallback.push({
+            cartItemId: raw.cartItemId || `${base.id}-${selectedSize}-${selectedColor}`.replace(/\s+/g, '-'),
+            id: base.id,
+            productId: base.id,
+            name: base.name,
+            slug: base.slug,
+            sku: base.sku || '',
+            price: Number(base.price) || 0,
+            compareAtPrice: base.compareAtPrice ? Number(base.compareAtPrice) : null,
+            currency: base.currency || 'USD',
+            image: base.images?.[0] || '',
+            size: selectedSize,
+            color: selectedColor,
+            quantity: Math.min(Number(raw.quantity) || 1, base.stockCount || 10),
+            stockCount: base.stockCount || 10,
+            inStock: (base.stockCount || 10) > 0,
+          });
+        }
+      }
       return { hydratedItems: fallback, notices: [] };
     }
   },

@@ -2,6 +2,7 @@ import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { CartProvider, useCart } from '../context/CartContext';
+import { AuthContext } from '../context/AuthContext';
 import { cartService } from '../services/cartService';
 
 // Mock CurrencyContext
@@ -11,6 +12,21 @@ vi.mock('../context/CurrencyContext', () => ({
     freeShippingThreshold: 150.0,
   }),
 }));
+
+// Mock AuthContext with authenticated customer
+vi.mock('../context/AuthContext', () => {
+  const AuthContext = React.createContext({
+    customer: { id: 'cust-101', email: 'customer@jableather.com' },
+    isAuthenticated: true,
+  });
+  return {
+    AuthContext,
+    useAuth: () => ({
+      customer: { id: 'cust-101', email: 'customer@jableather.com' },
+      isAuthenticated: true,
+    }),
+  };
+});
 
 // Mock ToastContext
 vi.mock('../context/ToastContext', () => ({
@@ -152,11 +168,31 @@ describe('CartContext & Cart Mechanics', () => {
       result.current.addToCart(mockProduct, { size: 'L', color: 'Espresso', quantity: 2 });
     });
 
-    const stored = cartService.getCart();
+    const stored = cartService.getCart('cust-101');
     expect(Array.isArray(stored)).toBe(true);
     expect(stored).toHaveLength(1);
     expect(stored[0].productId).toBe('prod-101');
     expect(stored[0].size).toBe('L');
     expect(stored[0].quantity).toBe(2);
+  });
+
+  it('blocks cart usage and keeps count strictly at 0 for unauthenticated users', () => {
+    const unauthWrapper = ({ children }) => (
+      <AuthContext.Provider value={{ customer: null, isAuthenticated: false }}>
+        <CartProvider>{children}</CartProvider>
+      </AuthContext.Provider>
+    );
+
+    const { result } = renderHook(() => useCart(), { wrapper: unauthWrapper });
+    expect(result.current.itemCount).toBe(0);
+    expect(result.current.items).toHaveLength(0);
+
+    let added;
+    act(() => {
+      added = result.current.addToCart(mockProduct, { size: 'M', quantity: 1 });
+    });
+
+    expect(added).toBe(false);
+    expect(result.current.itemCount).toBe(0);
   });
 });

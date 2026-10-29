@@ -125,6 +125,11 @@ const fetchActiveProducts = async () => {
  * Centralized service layer for product querying, filtering, and retrieval.
  */
 export const productService = {
+  invalidateCache: () => {
+    cachedProducts = null;
+    lastProductsFetch = 0;
+  },
+
   // Get all products with optional filters and sorting
   getProducts: async ({
     category = null,

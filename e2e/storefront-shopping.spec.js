@@ -8,7 +8,7 @@ test.describe('Storefront Browsing, Cart & Checkout Flow', () => {
     await expect(page.getByRole('link', { name: /shop/i }).first()).toBeVisible();
   });
 
-  test('browse catalog, select product, and add to bag', async ({ page }) => {
+  test('unauthenticated user clicking add to bag redirects to sign-in page', async ({ page }) => {
     await page.goto('/shop');
     await expect(page.locator('h1')).toContainText(/Leather Products|Shop/i);
 
@@ -23,8 +23,9 @@ test.describe('Storefront Browsing, Cart & Checkout Flow', () => {
     await expect(addToBagButton).toBeVisible({ timeout: 10000 });
     await addToBagButton.click();
 
-    // Verify Cart Drawer opens with item
-    await expect(page.getByText(/Shopping Bag \([1-9]\d*\)/i)).toBeVisible({ timeout: 10000 });
+    // Verify redirect to login page because strict sign-in is required
+    await expect(page).toHaveURL(/\/account\/login/, { timeout: 10000 });
+    await expect(page.locator('h1')).toContainText(/Sign In/i);
   });
 
   test('sandbox payment simulation: handles decline and success paths', async ({ page }) => {
@@ -48,9 +49,13 @@ test.describe('Storefront Browsing, Cart & Checkout Flow', () => {
   });
 
   test('checkout form validates phone and required fields', async ({ page }) => {
-    // Seed cart in localStorage before navigating to checkout
+    // Seed authenticated session and customer cart before navigating to checkout
     await page.addInitScript(() => {
-      localStorage.setItem('jab_shopping_cart', JSON.stringify([
+      localStorage.setItem('sb-ivusbfzbxoqvllxkyzcf-auth-token', JSON.stringify({
+        access_token: 'fake-e2e-token',
+        user: { id: 'c1000000-0000-0000-0000-000000000001', email: 'hamza@example.pk', role: 'authenticated', app_metadata: { role: 'customer' } }
+      }));
+      localStorage.setItem('jab_cart_c1000000-0000-0000-0000-000000000001', JSON.stringify([
         {
           productId: 'b1000000-0000-0000-0000-000000000001',
           name: 'Heritage Leather Biker Jacket',
