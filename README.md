@@ -98,11 +98,262 @@ This platform was built from scratch to provide international retail shoppers an
 
 ## 🏛️ System Architecture
 
+The JAB LEATHER platform is engineered around a modern, decoupled **3-Tier Jamstack-Hybrid Architecture** that strictly segregates client-side presentation, API orchestration, and cryptographic database persistence. It guarantees sub-50ms catalog responses, atomic stock concurrency, zero-trust client price isolation, and resilient multi-gateway payment processing.
+
+---
+
+### 1. High-Level System Topology
+
+```mermaid
+flowchart TB
+  subgraph ClientTier["Frontend Presentation Tier (React 19 + Vite 8)"]
+    direction TB
+    Storefront["Storefront Experience (Shopper Portal)"]
+    AdminPortal["Shopify-Style Admin Suite (/admin)"]
+    ContextLayer["Context State Engine (Auth, Cart, Currency, Wishlist)"]
+    ServicesLayer["Service Abstraction Layer (Product, Cart, Order, Admin)"]
+  end
+
+  subgraph GatewayTier["API Gateway Tier (Node.js 20 + Express 5)"]
+    direction TB
+    SecurityMW["Security Pipeline (Helmet, CORS, Rate Limiters)"]
+    PaymentEngine["Payment Gateway Abstraction (Factory Pattern)"]
+    WebhookHandler["HMAC Webhook Processor & Idempotency Filter"]
+    CronWorker["Abandoned Order Cleanup Daemon"]
+  end
+
+  subgraph BaaSTier["Data & BaaS Tier (Supabase)"]
+    direction TB
+    AuthService["Supabase Auth (GoTrue JWT & RBAC)"]
+    PostgresDB[("PostgreSQL 15 Engine with RLS")]
+    AtomicRPC["Atomic PL/pgSQL Stored Procedures (create_order)"]
+    StorageBucket["Supabase Storage (product-images CDN)"]
+  end
+
+  subgraph ExternalTier["External Gateways & Integrations"]
+    direction TB
+    SandboxGW["Sandbox Simulator"]
+    ManualGW["Manual Bank Wire & COD"]
+    ProductionGW["Stripe / PayPal Gateway"]
+  end
+
+  Storefront --> ContextLayer
+  AdminPortal --> ContextLayer
+  ContextLayer --> ServicesLayer
+
+  ServicesLayer -->|"Direct RLS Queries (anon / authenticated)"| PostgresDB
+  ServicesLayer -->|"Auth & Session Sync"| AuthService
+  ServicesLayer -->|"Admin Mutate (app_metadata check)"| PostgresDB
+  ServicesLayer -->|"Image Uploads (Admin)"| StorageBucket
+  ServicesLayer -->|"REST API (Orders / Payments / Catalog)"| SecurityMW
+
+  SecurityMW --> PaymentEngine
+  PaymentEngine --> SandboxGW
+  PaymentEngine --> ManualGW
+  PaymentEngine --> ProductionGW
+
+  SandboxGW -->|"Signed Webhook Event"| WebhookHandler
+  ProductionGW -->|"Signed Webhook Event"| WebhookHandler
+  WebhookHandler -->|"Verified Status Update"| PostgresDB
+
+  CronWorker -->|"Periodic Stale Lock Release"| PostgresDB
+  SecurityMW --> AtomicRPC
+  AtomicRPC --> PostgresDB
+```
+
+---
+
+### 2. Tier-by-Tier Architectural Breakdown
+
+#### 🖥️ Presentation & Client Tier (`client/`)
+- **React 19 & Vite 8 SPA**: Built with cutting-edge React 19 concurrent features, Tailwind CSS 4 utility styling, and Vite 8 for near-instant hot module replacement (HMR).
+- **Unidirectional React Context State Hierarchy**:
+  - `AuthContext`: Manages user credentials, GoTrue token refresh loops, and enforces `app_metadata.role === 'admin'` identity checks.
+  - `CartContext`: Pure immutable state machine handling quantity incrementation, item deduplication, stock-level clamping, and localStorage persistence.
+  - `CurrencyContext`: Authoritative single source of truth for dynamic currency conversions (`USD` <-> `PKR`), automatically recalibrating free-shipping thresholds.
+  - `WishlistContext`, `UIContext`, & `ToastContext`: Micro-stores governing drawer visibility, persistent wishlists, and global system notifications.
+- **Route-Level Code Splitting (`React.lazy` + `Suspense`)**:
+  - The initial landing bundle is reduced from 940 kB to **443 kB** (126 kB gzipped) by lazily chunking 20+ admin management screens and customer account portals.
+- **High-Fidelity Catalog Resilience Engine**:
+  - Features an in-memory 60-second cached fallback (`baselineCatalog.js`) that renders the full 14-category catalog in <50ms even if the database is cold or undergoing migrations.
+
+#### ⚙️ API Gateway & Payment Orchestrator (`server/`)
+- **Node.js 20+ & Express 5**: Modern asynchronous HTTP router serving secure transactional endpoints.
+- **Hardened Security Middleware Pipeline**:
+  - `helmet`: Applies strict HTTP headers (Content Security Policy, HSTS, X-Frame-Options).
+  - `cors`: Strict origin validation against pre-configured host allowlists.
+  - **Tiered Rate Limiting**:
+    - General endpoints: 100 requests per 15 minutes per IP.
+    - Transactional payment endpoints: Dedicated strict limit of 30 requests per 10 minutes per IP.
+- **Provider-Agnostic Payment Abstraction Layer (`server/payments/`)**:
+  - Unified `PaymentProvider` abstract interface enforcing `createPaymentIntent()`, `verifyWebhook()`, and `handleWebhook()`.
+  - Factory pattern (`server/payments/index.js`) seamlessly switches between:
+    - `SandboxPaymentProvider`: Deterministic testing provider with simulated HMAC webhook callbacks.
+    - `ManualPaymentProvider`: Offline Bank Wire & Cash on Delivery (COD) workflows.
+    - Extensible architecture ready for Stripe and PayPal integrations.
+- **Cryptographic Webhook Integrity & Replay Defense**:
+  - Raw body buffer retention (`req.rawBody`) ensures bit-exact HMAC-SHA256 signature verification.
+  - Dedicated `processed_webhook_events` tracking table prevents replay attacks and ensures strictly idempotent order settlements.
+  - Automatic amount and currency mismatch detection immediately blocks underpaid or tampered transactions.
+- **Abandoned Order Sweeper Daemon**:
+  - Background worker that identifies pending orders unpaid for >24 hours, automatically cancelling them and restoring reserved stock to inventory.
+
+#### 🗄️ Persistence, Security & BaaS Tier (`supabase/`)
+- **PostgreSQL 15 Relational Engine**:
+  - Normalized schemas spanning `products`, `product_variants`, `categories`, `orders`, `order_items`, `profiles`, `addresses`, `coupons`, `store_settings`, `homepage_cms`, and `reviews`.
+- **Atomic Concurrency Control (`create_order` RPC)**:
+  - PL/pgSQL stored procedure operating with `SECURITY DEFINER` privileges.
+  - Employs `SELECT ... FOR UPDATE` row locks on catalog products to prevent race conditions and inventory overselling.
+  - Recalculates all pricing, coupon discounts, and shipping fees server-side, completely ignoring client-supplied monetary values.
+  - Executes stock decrements and order creation within a single atomic database transaction.
+- **Database-Enforced Row Level Security (RLS)**:
+  - Security policies are enforced natively at the database engine level, insulating records even in the event of client-side logic bypasses.
+- **Supabase Storage**:
+  - S3-compatible cloud storage bucket (`product-images`) with edge CDN caching and administrative write restrictions.
+
+---
+
+### 3. Core Transaction Workflows
+
+#### A. Secure Order Creation & Inventory Lock Workflow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Shopper as Customer Browser
+    participant Client as React Client (Cart / Order Service)
+    participant Server as Express 5 Gateway
+    participant DB as Supabase Postgres (Atomic RPC)
+
+    Shopper->>Client: Clicks "Complete Order"
+    Client->>Server: POST /api/payments/create-intent (Order Payload)
+    Server->>Server: Rate Limit Check & Payload Sanitization
+    Server->>DB: Execute create_order(payload) RPC
+    activate DB
+    Note over DB: Locks product rows with FOR UPDATE, recalculates canonical prices, applies coupons, decrements stock atomically
+    DB-->>Server: Return Order Record (Status: pending, JAB-XXXXXX)
+    deactivate DB
+    Server-->>Client: Return Order Number & Payment Session
+    Client-->>Shopper: Render Payment View / Redirect
+```
+
+#### B. Payment Webhook Verification & Order Settlement
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Gateway as Payment Gateway / Sandbox
+    participant Webhook as Express /api/payments/webhook
+    participant Ledger as processed_webhook_events
+    participant Orders as orders Table (Supabase)
+
+    Gateway->>Webhook: POST Webhook (X-Signature, Event Payload)
+    activate Webhook
+    Webhook->>Webhook: Compute HMAC-SHA256 signature on raw request body
+    alt Invalid Signature
+        Webhook-->>Gateway: 401 Unauthorized (Reject)
+    else Signature Verified
+        Webhook->>Ledger: SELECT event_id FROM processed_webhook_events
+        alt Already Processed (Duplicate or Replay)
+            Webhook-->>Gateway: 200 OK (Idempotent acknowledge)
+        else Fresh Event
+            Webhook->>Orders: SELECT total_amount, currency FROM orders WHERE id = order_id
+            alt Amount or Currency Mismatch
+                Webhook->>Orders: Flag status as anomaly_detected
+                Webhook-->>Gateway: 400 Bad Request
+            else Verification OK
+                Webhook->>Orders: UPDATE order_status = confirmed, payment_status = paid
+                Webhook->>Ledger: INSERT event_id INTO processed_webhook_events
+                Webhook-->>Gateway: 200 OK (Event Processed)
+            end
+        end
+    end
+    deactivate Webhook
+```
+
+---
+
+### 4. Database Entity-Relationship (ER) Architecture
+
+```mermaid
+erDiagram
+    PROFILES ||--o{ ADDRESSES : "has many"
+    PROFILES ||--o{ ORDERS : "places"
+    ORDERS ||--|{ ORDER_ITEMS : "contains"
+    PRODUCTS ||--|{ PRODUCT_VARIANTS : "defines"
+    PRODUCTS ||--o{ ORDER_ITEMS : "referenced in"
+    CATEGORIES ||--o{ PRODUCTS : "classifies"
+    COUPONS ||--o{ ORDERS : "applied to"
+    ORDERS ||--o{ PAYMENTS : "settled via"
+    PAYMENTS ||--o{ PROCESSED_WEBHOOK_EVENTS : "logged in"
+
+    PROFILES {
+        uuid id PK
+        string email
+        string full_name
+        string phone
+        string role
+        timestamp created_at
+    }
+
+    ORDERS {
+        uuid id PK
+        string order_number UK
+        uuid user_id FK
+        numeric total_amount
+        numeric subtotal_amount
+        numeric discount_amount
+        numeric shipping_fee
+        string currency
+        string order_status
+        string payment_status
+        jsonb customer_snapshot
+        jsonb shipping_address
+        timestamp created_at
+    }
+
+    ORDER_ITEMS {
+        uuid id PK
+        uuid order_id FK
+        uuid product_id FK
+        string product_name
+        numeric unit_price
+        int quantity
+        jsonb variant_selection
+    }
+
+    PRODUCTS {
+        uuid id PK
+        string title
+        string slug UK
+        numeric base_price
+        numeric compare_at_price
+        int stock_count
+        string status
+        uuid category_id FK
+        jsonb images
+        jsonb metadata
+    }
+
+    CATEGORIES {
+        uuid id PK
+        string name
+        string slug UK
+        string department
+        int display_order
+        boolean is_active
+    }
+```
+
+---
+
+### 5. Repository File & Directory Topology
+
 ```
 JABLEATHER/
-├── client/                         # React 19 + Vite 8 SPA
+├── client/                         # React 19 + Vite 8 Frontend SPA
 │   ├── src/
-│   │   ├── api/                    # Axios API clients
+│   │   ├── api/                    # Axios API clients for backend gateway
 │   │   ├── components/
 │   │   │   ├── admin/              # Shopify-style admin layout and navigation
 │   │   │   ├── cart/               # Slide-over cart drawer & authoritative calculations
@@ -110,8 +361,8 @@ JABLEATHER/
 │   │   │   ├── home/               # Hero section, brand story, editorial showcases
 │   │   │   ├── layout/             # Storefront header, footer, dynamic mega menu
 │   │   │   └── product/            # Product cards, filter drawer, responsive grids
-│   │   ├── context/                # Auth, Cart, Wishlist, UI, and Toast providers
-│   │   ├── data/                   # Baseline catalog fallback datasets
+│   │   ├── context/                # Auth, Cart, Currency, Wishlist, UI, and Toast providers
+│   │   ├── data/                   # High-fidelity baseline catalog fallback datasets
 │   │   ├── pages/
 │   │   │   ├── admin/              # 20 admin operations screens (Dashboard, Catalog, Orders)
 │   │   │   ├── customer/           # Customer account portal (Profile, Orders, Addresses)
@@ -119,13 +370,16 @@ JABLEATHER/
 │   │   ├── services/               # Modular service layer with Supabase integration
 │   │   └── utils/                  # Currency formatting, validation, and Supabase client
 │   └── package.json
-├── server/                         # Node.js + Express 5 Backend Engine
+├── server/                         # Node.js 20+ + Express 5 Backend Engine
+│   ├── catalog/                    # Server-side catalog and inventory validation
+│   │   └── catalogRoutes.js        # Catalog inspection and stock verification
 │   ├── payments/                   # Provider-agnostic payment gateway layer
 │   │   ├── paymentProvider.js      # Unified PaymentProvider abstract interface
 │   │   ├── manualProvider.js       # Bank wire / COD manual confirmation provider
 │   │   ├── sandboxProvider.js      # Test provider with HMAC webhook generation
+│   │   ├── paymentRoutes.js        # Intent creation and HMAC webhook routes
 │   │   └── index.js                # Provider factory registry
-│   ├── test/                       # Server-side test suites (Node native runner)
+│   ├── test/                       # Server-side test suites (Node native test runner)
 │   ├── server.js                   # Express 5 server with Helmet, rate-limit, and CORS
 │   └── package.json
 ├── docs/                           # Architecture guides and media assets
@@ -134,6 +388,7 @@ JABLEATHER/
 │   └── PAYMENTS.md                 # Payment provider integration guide
 ├── e2e/                            # Playwright End-to-End browser test suite
 ├── supabase/                       # PostgreSQL migrations & database schema definitions
+│   └── migrations/                 # Ordered SQL migrations (RLS, schema, RPC functions)
 └── package.json                    # Workspace root scripts
 ```
 
